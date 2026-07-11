@@ -1,5 +1,5 @@
 # Mariupol 2022 — Corridor Severity Model
-
+## Live Website: https://ethical-tech-colab.github.io/mariupol-evacuation-model/ 
 **Retrospective decision-support prototype for civilian evacuation under IHL · not operational guidance**
 
 An interactive, single-file research tool that computes a daily civilian-protection **severity index** for the siege of Mariupol (5 March – 20 May 2022) from open data — ACLED events, ERA5-referenced temperature, WorldPop demographics, UNOSAT damage assessments, and the documented humanitarian-corridor record — and generates a dated situation assessment with legal anchors.
