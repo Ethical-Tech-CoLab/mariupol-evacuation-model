@@ -176,7 +176,7 @@
   </header>
 
   <section>
-    <div class="shead"><span class="n">§1</span><h2>Severity timeline &amp; date selection</h2><span class="r">Fig. 1 · model output, p = 6</span></div>
+    <div class="shead"><span class="n">§1</span><h2>Severity timeline &amp; date selection</h2><span class="r" id="tlHead">Fig. 1 · model output</span></div>
     <div class="regsel" id="regSel"></div>
     <div class="datebar">
       <button class="dnav" id="prevD" title="previous day">‹</button>
@@ -192,12 +192,7 @@
   <section>
     <div class="shead"><span class="n">§2</span><h2>Corridor geography</h2><span class="r">Fig. 2</span></div>
     <div class="mapfig" id="mapbox"></div>
-    <div class="maplegend">
-      <span><i style="background:var(--failed)"></i>Announced, failed · 5–13 Mar</span>
-      <span><i style="background:var(--self)"></i>Self-evacuation · 14 Mar – 29 Apr</span>
-      <span><i style="background:var(--human)"></i>Organized (UN/ICRC) · 30 Apr – 7 May</span>
-      <span><i style="background:var(--russia)"></i>Russia-bound (all phases) · filtration</span>
-    </div>
+    <div class="maplegend" id="mapLegend"></div>
     <p class="caption">Fig. 2 — Evacuation corridors from Mariupol, March–May 2022. Hatched area: territory under Russian control (approximate, mid-March); dashed line: approximate front line. The corridor corresponding to the regime selected in §1 is emphasised, and the inset reports the composite severity for the selected date with its component contributors; the encirclement ring around Mariupol is coloured and scaled by severity. Westbound movement to Zaporizhzhia crossed Russian-held territory and checkpoints between Manhush and Vasylivka; <b>the eastbound route into Russian-controlled territory via Bezimenne filtration operated in parallel throughout all phases</b>, and during the UN/ICRC operation some evacuees proceeded to Russian-controlled areas rather than Zaporizhzhia. Schematic — positions approximate.</p>
   </section>
 
@@ -226,7 +221,7 @@
           <div class="because" id="becauseLine"></div>
           <div class="numline" id="numLine"></div>
           <div id="compBox" style="margin-top:8px"></div>
-          <div class="pline" style="margin-top:16px"><span>Vulnerability weight Vw</span><b>1.114</b></div>
+          <div class="pline" style="margin-top:16px"><span>Vulnerability weight Vw</span><b id="vwVal">–</b></div>
           <div class="pline" style="border:none;padding-top:2px"><span>Priority = S × Vw</span><b id="priVal">–</b></div>
           <details class="calcdet"><summary>Show calculation</summary><div class="formula" id="formulaLine"></div></details>
         </div>
@@ -278,16 +273,32 @@ const bandOf = x => x<0.2?['Low','#43b795']:x<0.4?['Moderate','#8fae62']:x<0.55?
    (5,647 structures). Interpolated between assessment dates; UNOSAT counts only
    damage visible in imagery, so H is a lower bound. */
 const DMG_ANCH = [[0,0.02],[9,0.04],[21,0.14],[63,0.32],[76,0.33]];
-function dmgOf(i){
-  for (let k=0;k<DMG_ANCH.length-1;k++){
-    const [x0,y0]=DMG_ANCH[k],[x1,y1]=DMG_ANCH[k+1];
-    if (i>=x0 && i<=x1) return y0+(y1-y0)*(i-x0)/(x1-x0);
+/* Piecewise-linear interpolation over [x,y] anchors sorted by x. Two guards the
+   per-series loops lacked: a duplicated x no longer divides by zero (it returns the
+   later anchor's y instead of NaN), and a query outside the anchored range clamps to
+   the terminal anchor rather than falling through to a magic constant. Output is
+   identical to the previous loops for every anchored x, i.e. the whole 0–76 calendar. */
+function interp(anchors, i){
+  const first = anchors[0], last = anchors[anchors.length-1];
+  if (i <= first[0]) return first[1];
+  if (i >= last[0])  return last[1];
+  for (let k=0;k<anchors.length-1;k++){
+    const [x0,y0]=anchors[k],[x1,y1]=anchors[k+1];
+    if (i>=x0 && i<=x1) return x1===x0 ? y1 : y0+(y1-y0)*(i-x0)/(x1-x0);
   }
-  return 0.90;
+  return last[1];
 }
+const dmgOf = i => interp(DMG_ANCH, i);
 const P_EXP = 6;
+/* Digit → superscript, so the rendered formula tracks P_EXP instead of a typed '⁶'. */
+const sup = n => String(n).replace(/[0-9]/g, d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[+d]);
 const B = {bI:10, bP:6, bL:15, bT:18, bTf:-10, bD:60};
+/* Vulnerability weight, Vw = 1 + 0.3·(children+elderly)/N + 0.3·disabled/N over POP
+   below; kept as the published rounded value so the priority index stays reproducible. */
 const VWI = 1.114;
+/* Exposed pre-siege population (WorldPop [8]) — single source for §3, §4 and §5. */
+const POP = {total:343598, children:32926, elderly:73723, disabled:24288};
+const num = n => n.toLocaleString('en-GB');
 
 /* ---- calendar: 5 Mar – 20 May 2022 ---- */
 const START = new Date(Date.UTC(2022,2,5));
@@ -323,13 +334,7 @@ const regimeOf = i => REGIMES.find(r=>i>=r.from && i<=r.to);
 
 /* ---- temperature climatology (interpolated) ---- */
 const T_ANCH = [[0,-1],[5,-3],[8,-6],[11,-4],[13,2],[20,5],[31,9],[46,12],[61,15],[76,18]];
-function tempOf(i){
-  for (let k=0;k<T_ANCH.length-1;k++){
-    const [x0,y0]=T_ANCH[k],[x1,y1]=T_ANCH[k+1];
-    if (i>=x0 && i<=x1) return y0+(y1-y0)*(i-x0)/(x1-x0);
-  }
-  return 18;
-}
+const tempOf = i => interp(T_ANCH, i);
 const siegeOf = i => i + 3;
 
 const EVENTS = [
@@ -359,6 +364,8 @@ function computeDay(i){
   return {k,r,T,sg,comps, sev:powerMean(Object.values(comps),P_EXP), pri:0, get p(){return this.sev*VWI}};
 }
 const SERIES = Array.from({length:NDAYS},(_,i)=>computeDay(i));
+/* Number of aggregated components — the '/N' divisor of the power mean. */
+const NCOMP = Object.keys(SERIES[0].comps).length;
 
 /* ---- Fig. 1: cartographic map ---- */
 function drawMap(activeKey, s, di){
@@ -472,7 +479,7 @@ function drawTimeline(sel){
   const evm = EVENTS.map(e=>`<circle cx="${xOf(e.i)}" cy="${yOf(SERIES[e.i].sev)}" r="3.2" fill="#191b1e" stroke="#a6aab0" stroke-width="1.2"><title>${fmt(dayDate(e.i))} — ${e.t}</title></circle>`).join('');
   const s = SERIES[sel];
   $('tlbox').innerHTML = `<svg width="100%" viewBox="0 0 ${TW} ${TH}" id="tlsvg">
-    <text x="${ML}" y="${MT-6}" fill="#71767d" font-size="10" font-family="IBM Plex Mono" letter-spacing="1">COMPOSITE SEVERITY S · DAILY · p = 6</text>
+    <text x="${ML}" y="${MT-6}" fill="#71767d" font-size="10" font-family="IBM Plex Mono" letter-spacing="1">COMPOSITE SEVERITY S · DAILY · p = ${P_EXP}</text>
     ${bands}${grid}
     <path d="${area}" fill="#c8ccd2" opacity="0.05"/>
     <path d="${line}" fill="none" stroke="#c8ccd2" stroke-width="1.7"/>
@@ -513,8 +520,8 @@ function renderAssessment(i){
       <div class="vline"><span class="vl">Building stock damaged or destroyed (cumulative)</span><span class="vv">≈${Math.round(dmgOf(i)*100)}%</span></div>
       <div class="vline"><span class="vl">Basis</span><span class="vv" style="white-space:normal;text-align:right;font-size:11px;color:var(--text3)">illustrative anchors, pending UNOSAT calibration</span></div></div>
     <div class="vsec"><div class="vt"><span>Population exposed</span><span class="src">WorldPop [8]</span></div>
-      <div class="vline"><span class="vl">Civilian population (pre-siege)</span><span class="vv">343,598</span></div>
-      <div class="vline"><span class="vl">Children · elderly · disabled</span><span class="vv">32,926 · 73,723 · ≈24,288</span></div></div>`;
+      <div class="vline"><span class="vl">Civilian population (pre-siege)</span><span class="vv">${num(POP.total)}</span></div>
+      <div class="vline"><span class="vl">Children · elderly · disabled</span><span class="vv">${num(POP.children)} · ${num(POP.elderly)} · ≈${num(POP.disabled)}</span></div></div>`;
 
   /* component bands with reasons */
   const reasons = {
@@ -571,14 +578,17 @@ function renderAssessment(i){
   $('priVal').textContent = (s.sev*VWI).toFixed(3);
 
   /* full calculation, behind the toggle */
-  const pow = Object.entries(s.comps).map(([k,x])=>[k, Math.pow(x,6)]);
-  const sum6 = pow.reduce((a,[,v])=>a+v,0);
+  /* Exponent and divisor are read from P_EXP / the component count, so the displayed
+     working can never disagree with the value powerMean actually computed. */
+  const pow = Object.entries(s.comps).map(([k,x])=>[k, Math.pow(x,P_EXP)]);
+  const sumP = pow.reduce((a,[,v])=>a+v,0);
+  const n = pow.length, e = sup(P_EXP);
   $('formulaLine').innerHTML =
-    `S = [ (I⁶ + P⁶ + R⁶ + C⁶ + D⁶ + H⁶) / 6 ]<sup>1/6</sup><br>` +
+    `S = [ (${pow.map(([k])=>k+e).join(' + ')}) / ${n} ]<sup>1/${P_EXP}</sup><br>` +
     `normalised: ${Object.entries(s.comps).map(([k,x])=>k+' = '+x.toFixed(2)).join(' · ')}<br>` +
-    `sixth powers: ${pow.map(([k,v])=>k+'⁶ = '+v.toFixed(3)).join(' · ')} · Σ = ${sum6.toFixed(3)}<br>` +
-    `S = ( ${sum6.toFixed(3)} / 6 )<sup>1/6</sup> = <b>${s.sev.toFixed(3)}</b>` +
-    `<div class="calcnote">The composite always falls between the simple average and the worst component, closer to the worst. The sixth power is an internal weighting device that produces this behaviour; powered values are not shares of causation.</div>`;
+    `powers (p = ${P_EXP}): ${pow.map(([k,v])=>k+e+' = '+v.toFixed(3)).join(' · ')} · Σ = ${sumP.toFixed(3)}<br>` +
+    `S = ( ${sumP.toFixed(3)} / ${n} )<sup>1/${P_EXP}</sup> = <b>${s.sev.toFixed(3)}</b>` +
+    `<div class="calcnote">The composite always falls between the simple average and the worst component, closer to the worst. The p = ${P_EXP} power is an internal weighting device that produces this behaviour; powered values are not shares of causation.</div>`;
 }
 
 /* ---- §4 conclusion ---- */
@@ -607,7 +617,7 @@ function conclusion(i){
     ? ` Kinetic indicators have declined relative to mid-March, yet composite severity remains at ${cls.toLowerCase()}: under weakest-link aggregation, deprivation and destruction cannot be averaged away by a lull in shelling — the model's central methodological point <span class="ref">[2, 3, 4]</span>.` : '';
   $('concBox').innerHTML = `
     <p><span class="lede">As of ${fmt(dayDate(i))}, modelled severity is ${s.sev.toFixed(2)} — ${cls}: ${ph.act}.</span>
-    The corridor regime in effect is <i>${s.r.name.toLowerCase()}</i>: ${s.r.txt}. The dominant component is ${NMl[dk]} (${dx.toFixed(2)}), driven by ${driver}; the second-ranked component is ${NMl[dk2]} (${dx2.toFixed(2)}). Applied to an exposed population of 343,598 — of whom roughly one in three is a child, elderly, or living with a disability <span class="ref">[8]</span> — the vulnerability-weighted priority index is ${(s.sev*VWI).toFixed(2)}.</p>
+    The corridor regime in effect is <i>${s.r.name.toLowerCase()}</i>: ${s.r.txt}. The dominant component is ${NMl[dk]} (${dx.toFixed(2)}), driven by ${driver}; the second-ranked component is ${NMl[dk2]} (${dx2.toFixed(2)}). Applied to an exposed population of ${num(POP.total)} — of whom roughly one in three is a child, elderly, or living with a disability <span class="ref">[8]</span> — the vulnerability-weighted priority index is ${(s.sev*VWI).toFixed(2)}.</p>
     <p>${legal}${trendNote}</p>
     <p>Assessment: the factual predicate for evacuation — imminent danger to the civilian population combined with denial of objects indispensable to survival — is ${s.sev>=0.5?'clearly established':'developing'} on this date under the model's documented thresholds <span class="ref">[2, 4, 5]</span>. Severity is one axis of the decision matrix; a corridor decision additionally requires the Feasibility and Destination-viability axes, the latter encompassing filtration exposure on adversary-controlled routes.</p>`;
 }
@@ -917,16 +927,34 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowRight') setDay(Math.min(NDAYS-1,cur+1));
 });
 
+/* ---- static captions bound to the model config (single source of truth) ---- */
+const dshort = i => dayDate(i).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
+$('tlHead').textContent = `Fig. 1 · model output, p = ${P_EXP}`;
+$('vwVal').textContent = VWI.toFixed(3);
+/* Fig. 2 legend: the short labels are presentational, but the date ranges are derived
+   from REGIMES so the legend cannot drift from the windows the model actually uses. */
+$('mapLegend').innerHTML =
+  [['failed','Announced, failed'],['self','Self-evacuation'],['human','Organized (UN/ICRC)']]
+    .map(([key,label])=>{ const r = REGIMES.find(x=>x.key===key);
+      return `<span><i style="background:var(--${key})"></i>${label} · ${dshort(r.from)} – ${dshort(r.to)}</span>`; })
+    .join('') +
+  `<span><i style="background:var(--russia)"></i>Russia-bound (all phases) · filtration</span>`;
+/* Phase bands for §5, read off PHASES rather than re-typed. */
+const PHASE_SCALE = PHASES.map((p,k)=>({ n:p.n, name:p.name,
+  rng: k===0 ? `S &lt; ${p.t.toFixed(2)}`
+     : k===PHASES.length-1 ? `≥ ${PHASES[k-1].t.toFixed(2)}`
+     : `${PHASES[k-1].t.toFixed(2)}–${p.t.toFixed(2)}` }));
+
 /* ---- §5 methodology, §6 references ---- */
 $('methods').innerHTML = `
 <details><summary>Component definitions and normalisation bounds</summary><div class="dbody">
-<p>Six components, each min–max normalised to <code>x ∈ [0, 1]</code> (OECD/JRC 2008, Step 5): <b>I</b> hostility intensity — ACLED violent events/day, ceiling 10; <b>P</b> kinetic proximity — activity ≤5 km + 0.5 × ≤15 km, ceiling 6/day; <b>R</b> protection risk — mean of civilian-targeting share, lethality per event (ceiling 15), corridor violation history, and consent exposure on an ordinal scale from negotiated third-party escort (0.25) to adversary screening (0.90), operationalising GC IV arts. 17 &amp; 23 and AP I art. 70; <b>C</b> cold burden — shortfall below the 18 °C Sphere habitable minimum, floor −10 °C, with outdoor ERA5 temperature proxying indoor conditions after utilities were destroyed (~2 March); <b>D</b> deprivation clock — days under encirclement, ceiling 60, less a relief credit per convoy reaching the city (Mariupol proper: zero); <b>H</b> infrastructure damage — cumulative share of the building stock damaged or destroyed, derived from satellite damage assessment (UNOSAT rapid assessments and Copernicus EMS rapid mapping as the operational standard; SAR change detection and VIIRS night-light loss as complementary proxies) [12, 13]. H is monotone by construction; the values in this prototype are illustrative anchors pending calibration against published building-level assessments. Where a component reaches its ceiling it is flagged (▲); an asymptotic alternative, <code>x = 1 − e^(−t/τ)</code>, avoids exact saturation and is a candidate refinement.</p></div></details>
+<p>Six components, each min–max normalised to <code>x ∈ [0, 1]</code> (OECD/JRC 2008, Step 5): <b>I</b> hostility intensity — ACLED violent events/day, ceiling ${B.bI}; <b>P</b> kinetic proximity — activity ≤5 km + 0.5 × ≤15 km, ceiling ${B.bP}/day; <b>R</b> protection risk — mean of civilian-targeting share, lethality per event (ceiling ${B.bL}), corridor violation history, and consent exposure on an ordinal scale from negotiated third-party escort (0.25) to adversary screening (0.90), operationalising GC IV arts. 17 &amp; 23 and AP I art. 70; <b>C</b> cold burden — shortfall below the ${B.bT} °C Sphere habitable minimum, floor ${String(B.bTf).replace('-','−')} °C, with outdoor ERA5 temperature proxying indoor conditions after utilities were destroyed (~2 March); <b>D</b> deprivation clock — days under encirclement, ceiling ${B.bD}, less a relief credit per convoy reaching the city (Mariupol proper: zero); <b>H</b> infrastructure damage — cumulative share of the building stock damaged or destroyed, derived from satellite damage assessment (UNOSAT rapid assessments and Copernicus EMS rapid mapping as the operational standard; SAR change detection and VIIRS night-light loss as complementary proxies) [12, 13]. H is monotone by construction; the values in this prototype are illustrative anchors pending calibration against published building-level assessments. Where a component reaches its ceiling it is flagged (▲); an asymptotic alternative, <code>x = 1 − e^(−t/τ)</code>, avoids exact saturation and is a candidate refinement.</p></div></details>
 <details><summary>Severity classification scale</summary><div class="dbody">
-<p>The continuous composite is reported on a five-phase scale for operational legibility, following the presentation convention of the INFORM Severity Index and IPC classifications [4]: Phase 1 <b>Minimal</b> (S &lt; 0.20, routine monitoring); Phase 2 <b>Concern</b> (0.20–0.40, contingency planning and registration of vulnerable groups); Phase 3 <b>Serious</b> (0.40–0.55, evacuation planning and access negotiation); Phase 4 <b>High</b> (0.55–0.70, evacuation warranted); Phase 5 <b>Critical</b> (≥ 0.70, immediate protective action). Thresholds are model conventions to be validated against expert elicitation.</p></div></details>
-<details><summary>Aggregation: power mean, p = 6</summary><div class="dbody">
-<p><code>S = ( (1/6) Σ xᵢ⁶ )^(1/6)</code>. A power mean always lies between the arithmetic mean of the components and their maximum; the exponent sets where (Decancq &amp; Lugo 2013; OECD/JRC 2008). p = 6 places the composite close to the worst condition — the humanitarian weakest-link principle: a population safe from shelling but freezing without water is not "medium severity." The assessment panel therefore reports the simple average, the rating, and the worst component side by side, which communicates the rule without requiring the reader to engage with exponents. A linear average would score the post-March kinetic lull as recovery; Fig. 1 shows why it was not. Limited-compensability aggregation follows the INFORM Severity lineage (ACAPS/JRC) with the parameter made explicit.</p></div></details>
+<p>The continuous composite is reported on a five-phase scale for operational legibility, following the presentation convention of the INFORM Severity Index and IPC classifications [4]: Phase ${PHASE_SCALE[0].n} <b>${PHASE_SCALE[0].name}</b> (${PHASE_SCALE[0].rng}, routine monitoring); Phase ${PHASE_SCALE[1].n} <b>${PHASE_SCALE[1].name}</b> (${PHASE_SCALE[1].rng}, contingency planning and registration of vulnerable groups); Phase ${PHASE_SCALE[2].n} <b>${PHASE_SCALE[2].name}</b> (${PHASE_SCALE[2].rng}, evacuation planning and access negotiation); Phase ${PHASE_SCALE[3].n} <b>${PHASE_SCALE[3].name}</b> (${PHASE_SCALE[3].rng}, evacuation warranted); Phase ${PHASE_SCALE[4].n} <b>${PHASE_SCALE[4].name}</b> (${PHASE_SCALE[4].rng}, immediate protective action). Thresholds are model conventions to be validated against expert elicitation.</p></div></details>
+<details><summary>Aggregation: power mean, p = ${P_EXP}</summary><div class="dbody">
+<p><code>S = ( (1/${NCOMP}) Σ xᵢ${sup(P_EXP)} )^(1/${P_EXP})</code>. A power mean always lies between the arithmetic mean of the components and their maximum; the exponent sets where (Decancq &amp; Lugo 2013; OECD/JRC 2008). p = ${P_EXP} places the composite close to the worst condition — the humanitarian weakest-link principle: a population safe from shelling but freezing without water is not "medium severity." The assessment panel therefore reports the simple average, the rating, and the worst component side by side, which communicates the rule without requiring the reader to engage with exponents. A linear average would score the post-March kinetic lull as recovery; Fig. 1 shows why it was not. Limited-compensability aggregation follows the INFORM Severity lineage (ACAPS/JRC) with the parameter made explicit.</p></div></details>
 <details><summary>Daily simulation construction</summary><div class="dbody">
-<p>Kinetic variables are ACLED-derived per-day rates held constant within documented phases (pre-9 Mar; 10–15 Mar; 16 Mar–5 May; post-5 May extrapolated). Corridor regimes follow the documented record: announced-failed (5–13 Mar), self-evacuation (from 14 Mar), UN/ICRC organized evacuation (30 Apr–7 May), no organized corridor (8–20 May). Parties' conduct summaries are attributed to OCHA, ICRC and OHCHR reporting and are descriptive, not adjudicative. Temperature is an interpolated Mariupol climatology pending full ERA5 hourly extraction. The vulnerability weight <code>Vw = 1 + 0.3·(children+elderly)/N + 0.3·disabled/N = 1.114</code> multiplies exposure, not severity, mirroring GC IV special-protection categories and CRPD art. 11.</p></div></details>`;
+<p>Kinetic variables are ACLED-derived per-day rates held constant within documented phases (pre-9 Mar; 10–15 Mar; 16 Mar–5 May; post-5 May extrapolated). Corridor regimes follow the documented record: ${REGIMES.map(r=>`${r.key==='failed'?'announced-failed':r.key==='self'?'self-evacuation':r.key==='human'?'UN/ICRC organized evacuation':'no organized corridor'} (${dshort(r.from)}–${dshort(r.to)})`).join(', ')}. Parties' conduct summaries are attributed to OCHA, ICRC and OHCHR reporting and are descriptive, not adjudicative. Temperature is an interpolated Mariupol climatology pending full ERA5 hourly extraction. The vulnerability weight <code>Vw = 1 + 0.3·(children+elderly)/N + 0.3·disabled/N = ${VWI.toFixed(3)}</code> multiplies exposure, not severity, mirroring GC IV special-protection categories and CRPD art. 11.</p></div></details>`;
 
 $('refList').innerHTML = [
  'Raleigh, C., Linke, A., Hegre, H. &amp; Karlsen, J. (2010). Introducing ACLED: An Armed Conflict Location and Event Dataset. <i>Journal of Peace Research</i> 47(5), 651–660.',
