@@ -5,8 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Humanitarian Corridors Under Siege — Mariupol 2022 Severity Assessment</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<!-- No Subresource Integrity on the Google Fonts stylesheet: the css2 endpoint serves a
+     different response per User-Agent (woff2 vs ttf @font-face blocks), so its bytes are
+     not stable and any fixed integrity hash would break the page for some browsers.
+     Accepted risk: it is a stylesheet, not script, so it cannot execute JS. Replace with
+     self-hosted font files if the residual CSS-injection risk becomes unacceptable. -->
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" referrerpolicy="no-referrer">
 <style>
   :root{
     --bg:#191b1e; --panel:#1f2226; --panel2:#24282d; --field:#2b2f35;
@@ -245,10 +250,14 @@
     <p class="note">Retrospective research prototype. Kinetic variables derive from the author's ACLED extraction for Mariupol raion, held constant within documented phases; the temperature series is an interpolated climatology pending full ERA5 extraction; the corridor record and parties' conduct follow OCHA and OHCHR reporting; front line and controlled areas in Fig. 1 are approximate. Not operational guidance.</p>
   </section>
 </div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 const $ = id => document.getElementById(id);
-const clamp = v => Math.max(0, Math.min(1, v));
+/* clamp must not propagate NaN: Math.max/Math.min return NaN for a NaN (or non-numeric)
+   input, which would poison powerMean and leave phaseOf without a match. Behaviour is
+   unchanged for every finite input; only NaN is absorbed (to 0). ±Infinity still clamps
+   to 1/0 as normal, so an overflowing component cannot understate severity. */
+const clamp = v => { const c = Math.max(0, Math.min(1, v)); return Number.isNaN(c) ? 0 : c; };
 const powerMean = (xs,p) => Math.pow(xs.reduce((a,x)=>a+Math.pow(x,p),0)/xs.length, 1/p);
 const sevCol = x => x<0.4?'var(--sev-lo)':x<0.7?'var(--sev-mid)':'var(--sev-hi)';
 /* Five-phase classification (presentation aligned with the INFORM Severity / IPC 5-category convention) */
@@ -258,7 +267,9 @@ const PHASES = [
   {t:0.55, n:3, name:'Serious',  act:'evacuation planning; negotiate access',       hex:'#cf9a4b'},
   {t:0.70, n:4, name:'High',     act:'evacuation warranted',                        hex:'#d97f4b'},
   {t:9,    n:5, name:'Critical', act:'immediate protective action',                 hex:'#d95c5c'}];
-const phaseOf = s => PHASES.find(p=>s<p.t);
+/* Fall back to the top phase so an out-of-range or non-finite severity never yields
+   undefined (callers dereference .n/.hex/.name unconditionally). */
+const phaseOf = s => PHASES.find(p=>s<p.t) || PHASES[PHASES.length-1];
 const bandOf = x => x<0.2?['Low','#43b795']:x<0.4?['Moderate','#8fae62']:x<0.55?['Elevated','#cf9a4b']:x<0.7?['High','#d97f4b']:['Critical','#d95c5c'];
 /* Infrastructure damage H — share of structures visibly damaged, calibrated to
    published UNOSAT assessments (code CE20220223UKR) [12]: 14 Mar 2022 ≈ 4% of
