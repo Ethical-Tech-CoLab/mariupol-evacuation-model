@@ -69,8 +69,27 @@ The full independent academic peer review of this report is in [PEER-REVIEW.md](
 
 **What the review found:**
 
-- The headline claim that "the binding constraint was consent, not information" (S1.6, Foreword) is a causal attribution a severity-only, retrospectively-built model cannot support, contradicting its own S14.2 concession.
-- The signature "violence never dominates" result (S6.2) is substantially a ceiling artefact (S11.10) and is never tested with a sensitivity analysis.
+- The headline claim that "the binding constraint was consent, not information" (S1.6, Foreword) is a causal attribution a severity-only, retrospectively-built model cannot support, contradicting its own S14.2 concession. — **Fixed.**
+- The signature "violence never dominates" result (S6.2) is substantially a ceiling artefact (S11.10) and is never tested with a sensitivity analysis. — **Fixed: sensitivity analysis run; the result does not survive.**
 - The "daily" framing is undercut by provenance: violence changes only 3 times in 77 days and the cold burden comes from climatology, not 2022 weather (S7.3, S4.5).
 
 **Noted strength:** Rare unforced candour (self-flagged citation/data errors), a genuinely original IHL-anchored consent component (S4.4), and fully reproducible arithmetic.
+
+
+### Revisions applied (peer review, Tier 2)
+
+**The causal headline is demoted to a hypothesis.** "The binding constraint was consent, not information" is no longer presented as a conclusion. This model measures severity only: it observes neither what information decision-makers held in real time nor why the mechanism was delayed, and it is built retrospectively knowing how the siege ended — the wrong instrument for establishing real-time sufficiency of information. S1.6 now splits the claim, keeping prominently the part the model carries (severity reached the warranting level from the second week of March, ~7.5 weeks before the 30 April mechanism) and demoting the causal half to a hypothesis requiring external evidence the model does not contain. The S14.2 caveat is now stated at the same prominence as the finding.
+
+**The sensitivity analysis has been run and reported** (new S11.13; reproduce with `node docs/sensitivity.js`). It settles the "violence never dominates" question against the substantive reading:
+
+| Variant | Violence-dominant days | First day sev ≥ 0.70 |
+|---|---|---|
+| Published settings (bI=10, bD=60, p=6) | 0 / 77 | 28 Apr |
+| bI = 4.8 (observed maximum) | **11 / 77** | 10 Mar |
+| bD = 90 | **9 / 77** | never |
+| p = 2 | 0 / 77 | never |
+| bI = 4.8, bD = 90, p = 6 | **20 / 77** | 10 Mar |
+
+- **Does not survive:** "violence never dominates" — it holds only at the published intensity ceiling, which caps that component at 0.48 by dividing by 10 against an observed maximum of 4.8. Normalised to its observed range, intensity leads on 11 days; with the deprivation ceiling relaxed too, violence leads on 20 of 77.
+- **Does not survive:** the Critical phase. At p=2, p=4, or bD=90 the series never reaches 0.70 at all; at the published settings it peaks at 0.743, barely above the threshold.
+- **Does survive:** the deprivation clock leads on 43–58 of 77 days under every variant, and the mid-March timing the headline rests on (severity passes 0.55 on 9 March) is robust.

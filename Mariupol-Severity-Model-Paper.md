@@ -69,12 +69,30 @@ derived from the share of the pre-siege population who were children, elderly,
 or living with a disability, to produce what the repository calls a priority
 index.
 
-1.6 The repository's central claim is a claim about timing. It argues that
-publicly available information was sufficient to establish, well before the end
-of March, that the factual conditions triggering obligations under International
-Humanitarian Law were met, and that the negotiated evacuation mechanism did not
-arrive until 30 April. The repository states its conclusion in one sentence: the
-binding constraint was not information but consent.
+1.6 The repository's central claim is a claim about timing, and it should be
+read in two parts that the model supports very differently.
+
+The part the model carries: **on its own scale, modelled severity had reached
+the level at which evacuation is warranted from the second week of March 2022,
+roughly seven and a half weeks before the negotiated mechanism arrived on 30
+April.** That timing gap survives recomputation (see 6.2) and is the result this
+work stands on.
+
+The part the model does not carry: that the binding constraint was consent
+rather than information. Earlier versions of this repository stated that as a
+conclusion. **It is not one.** This model measures severity only. It observes
+neither what information decision-makers actually held in real time, nor why the
+mechanism was delayed -- whether by consent, logistics, political will, or
+failed negotiation. It is also built retrospectively, knowing how the siege
+ended (see 10.4 and 11.2), which makes it the wrong instrument for establishing
+what a contemporaneous observer could have known: hindsight-fitted ceilings and
+phase boundaries cannot demonstrate real-time sufficiency of information.
+
+The consent claim is therefore demoted to what it actually is: **a hypothesis
+the timing gap raises, and one that testing requires evidence this model does
+not contain** -- contemporaneous situation reports, negotiation records, and
+OCHA or ICRC access logs. The arithmetic's contribution is to make that question
+askable precisely, with a date attached. It does not answer it. See 14.2.
 
 1.7 The tool is a single web page that runs in an ordinary browser. Its author
 describes it as retrospective, not validated against how people actually
@@ -578,15 +596,23 @@ and meaningful one, but the summary wording somewhat overstates what the model
 outputs. A reader comparing the README to the chart will notice the difference,
 and it would be better resolved than left.
 
-It is also worth noting that across all 77 days the dominant component is either
-cold burden, on 23 days, or the deprivation clock, on 54 days. On no day of the
-siege is the worst-scoring component one of the three that measure violence.
-That is a striking result and it is the model's substantive point made
-arithmetically. It is also, in part, an artefact of where the ceilings were set:
-intensity was divided by 10 when the observed maximum was 4.8, while the
-deprivation clock was divided by 60 days in a siege that ran for more than 60
-days. Both readings are true at once, and an honest use of this model requires
-holding both.
+It is also worth noting that at the published settings, across all 77 days the
+dominant component is either cold burden, on 23 days, or the deprivation clock,
+on 54 days. On no day of the siege is the worst-scoring component one of the
+three that measure violence.
+
+Earlier versions of this paper presented that as a striking substantive result
+while conceding it was "in part" a scaling artefact, and asked the reader to
+hold both readings at once. **The sensitivity analysis in 11.13 settles the
+question, and it does not favour the substantive reading.** "Violence never
+dominates" does not survive normalising intensity to its observed range: divide
+intensity by its observed maximum of 4.8 rather than by 10 and a violence
+component becomes dominant on 11 of 77 days. Relax the deprivation ceiling to 90
+days and protection risk leads on a further 9. Do both and violence leads on 20
+of 77 days. The result is therefore substantially an artefact of the divisors
+and should not be quoted as a finding about Mariupol. What does survive is the
+prominence of the deprivation clock, which leads on 43 to 58 days under every
+variant tested.
 
 ---
 
@@ -886,9 +912,63 @@ against an observed maximum of 4.8, so it can never exceed 0.48. The deprivation
 clock is divided by 60 in a siege lasting longer than 60 days, so it necessarily
 saturates. Under a weakest-link rule, the component with the most generous
 ceiling relative to its observed range will dominate almost by construction.
-That the violence components never lead is therefore partly a substantive
-finding and partly a consequence of the scaling, and the two should not be
-conflated.
+The sensitivity analysis reported at 11.13 tests this directly and finds that
+the violence result is driven by the scaling rather than by the data.
+
+11.13 Sensitivity analysis over the ceilings and the exponent. The series was
+re-run varying the three parameters the results are most likely to depend on:
+the intensity ceiling (bI), the deprivation ceiling (bD), and the power-mean
+exponent (p). "Violence-dominant days" counts days on which one of the three
+violence components -- hostility intensity, kinetic proximity, or protection
+risk -- is the highest-scoring component.
+
+| Variant | Violence-dominant days | Dominant components | First day sev >= 0.70 | Mean sev |
+|---|---|---|---|---|
+| **Published settings** (bI=10, bD=60, p=6) | **0 / 77** | D 54, C 23 | 28 Apr | 0.581 |
+| bI = 4.8 (observed maximum) | **11 / 77** | D 54, C 12, I 11 | 10 Mar | 0.603 |
+| bD = 45 | 0 / 77 | D 58, C 19 | 14 Apr | 0.636 |
+| bD = 90 | **9 / 77** | D 43, C 25, R 9 | never | 0.474 |
+| p = 2 | 0 / 77 | D 54, C 23 | never | 0.423 |
+| p = 4 | 0 / 77 | D 54, C 23 | never | 0.521 |
+| bI = 4.8, bD = 90, p = 2 | **20 / 77** | D 43, I 20, C 14 | never | 0.408 |
+| bI = 4.8, bD = 90, p = 6 | **20 / 77** | D 43, I 20, C 14 | 10 Mar | 0.500 |
+
+Three conclusions follow, and they should be read as the paper's position on
+which of its results are load-bearing.
+
+**What does not survive: "violence never dominates."** The result holds only at
+the published intensity ceiling. Dividing intensity by 10 caps that component at
+0.48, which is below the level the deprivation clock and the cold burden reach
+routinely; normalised instead to its observed maximum of 4.8, intensity reaches
+1.00 and leads on 11 days. Relaxing the deprivation ceiling to 90 days lets
+protection risk lead on 9. Under both changes together, violence leads on 20 of
+77 days. This is an accounting consequence of where the divisors were set, not a
+discovery about Mariupol, and it should not be quoted as the latter.
+
+**What does not survive: the Critical phase.** Whether the siege ever reaches
+the Critical band at all is the least robust result in the paper. At the
+published settings the series first reaches 0.70 on 28 April and peaks at 0.743
+-- barely above the threshold. At p = 2 or p = 4 it never reaches Critical; at
+bD = 90 it never reaches Critical; at bD = 45 it arrives two weeks earlier, on
+14 April. The Critical classification is a statement about the parameter
+choices at least as much as about the city, and 11.9's observation that from
+1 May the number is "reporting the passage of time and nothing more" should be
+read in that light.
+
+**What does survive.** Two results are stable across every variant tested. The
+deprivation clock is the most frequently dominant component throughout,
+leading on 43 to 58 of 77 days regardless of ceilings or exponent. And the
+mid-March timing that the paper's headline rests on is robust: at the published
+settings severity passes 0.40 on 5 March, the first day of the series, and 0.55
+on 9 March, well before the evacuation mechanism arrived on 30 April. Under the
+variants that lower the overall level -- p = 2, bD = 90 -- the mean falls but
+the mid-March crossing of the lower bands does not disappear. The timing gap in
+1.6 therefore stands; the causal and dominance claims built on top of it do not.
+
+A caveat on the exponent: because dominance is defined by which component is
+largest, it is mathematically unaffected by p, which is why the p rows show no
+change in dominance. The exponent matters for the severity *level* and hence
+for phase classification, not for which component leads.
 
 11.11 The vulnerability weight carries no information within this case. As a
 single constant applied to all 77 days, it rescales the output without changing
@@ -975,10 +1055,11 @@ contested, which is more than most such tools allow.
 
 14.2 The model's own numbers say that the conditions the law responds to were
 plainly present in Mariupol from the second week of March 2022, and that the
-mechanism the law envisages arrived at the end of April. The repository draws
+mechanism the law envisages arrived at the end of April. Earlier versions of this repository drew
 from this the conclusion that the constraint was consent rather than
-information. That conclusion does not follow from the arithmetic alone, and it
-should not be presented as though it does. But the arithmetic makes it a
+information. That conclusion does not follow from the arithmetic alone, it is
+no longer presented as though it does, and 1.6 now states the limitation at the
+same prominence as the finding. But the arithmetic makes it a
 question that can be asked precisely, with a date attached, and against evidence
 that was available at the time to anyone who cared to assemble it. For a piece
 of student research on a contested and very recent event, that is a serious
