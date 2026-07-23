@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Humanitarian Corridors Under Siege — Mariupol 2022 Severity Assessment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --bg:#191b1e; --panel:#1f2226; --panel2:#24282d; --field:#2b2f35;
+    --line:#33373d; --line2:#4a4f56;
+    --text:#eae8e1; --text2:#a6aab0; --text3:#71767d;
+    --failed:#d95c5c; --self:#43b795; --human:#988fe0; --none:#8b929b; --russia:#cf9a4b;
+    --sev-lo:#43b795; --sev-mid:#cf9a4b; --sev-hi:#d95c5c;
+    --mono:'IBM Plex Mono',monospace; --sans:'Archivo',sans-serif; --serif:'Source Serif 4',serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:15.5px;line-height:1.65;padding:0 0 80px}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 26px}
+  /* masthead */
+  .mast{border-top:3px solid var(--text);border-bottom:1px solid var(--line);padding:9px 0;display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;color:var(--text3);text-transform:uppercase}
+  header{padding:34px 0 26px;border-bottom:1px solid var(--line);margin-bottom:30px}
+  h1{font-family:var(--serif);font-size:36px;font-weight:700;letter-spacing:-.012em;line-height:1.15;max-width:820px}
+  .sub{font-family:var(--serif);font-size:16.5px;color:var(--text2);max-width:800px;margin-top:10px}
+  .sub i{color:var(--text3)}
+  .meta{font-family:var(--mono);font-size:11.5px;color:var(--text3);margin-top:14px}
+  /* sections */
+  section{margin-bottom:38px}
+  .shead{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--line2);padding-bottom:7px;margin-bottom:18px}
+  .shead .n{font-family:var(--mono);font-size:12px;color:var(--text3)}
+  .shead h2{font-family:var(--sans);font-size:12.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--text)}
+  .shead .r{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--text3)}
+  /* map */
+  .mapfig{border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .caption{font-family:var(--sans);font-size:12px;color:var(--text3);margin-top:8px;line-height:1.55}
+  .maplegend{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--sans);font-size:12px;color:var(--text2);margin-top:9px}
+  .maplegend span i{display:inline-block;width:16px;height:2.5px;margin-right:6px;vertical-align:3px;border-radius:1px}
+  /* timeline */
+  .datebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-family:var(--sans)}
+  .dnav{background:var(--panel2);border:1px solid var(--line);color:var(--text2);border-radius:3px;width:30px;height:30px;font-size:15px;cursor:pointer}
+  .dnav:hover{border-color:var(--line2);color:var(--text)}
+  .dateshow{font-family:var(--mono);font-size:15.5px;color:var(--text);min-width:186px}
+  .regimechip{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border:1px solid;border-radius:3px;padding:4px 10px}
+  .evchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+  .evchip{background:transparent;border:1px solid var(--line);color:var(--text3);border-radius:3px;padding:4px 9px;font-size:11.5px;font-family:var(--mono);cursor:pointer}
+  .regsel{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .regbtn{display:flex;flex-direction:column;align-items:flex-start;gap:1px;background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:8px 13px;cursor:pointer;font-family:var(--sans);text-align:left;transition:border-color .15s}
+  .regbtn:hover{border-color:var(--line2)}
+  .regbtn.on{background:var(--panel2)}
+  .regbtn .rn{font-size:12.5px;color:var(--text);font-weight:500}
+  .regbtn .rn .dot{display:inline-block;width:8px;height:8px;border-radius:1.5px;margin-right:7px;vertical-align:0}
+  .regbtn .rd{font-family:var(--mono);font-size:10.5px;color:var(--text3)}
+  .evnav{background:transparent;border:1px solid var(--line);color:var(--text3);border-radius:3px;padding:6px 11px;font-size:11.5px;font-family:var(--mono);cursor:pointer}
+  .evnav:hover{border-color:var(--line2);color:var(--text2)}
+  .evnow{font-family:var(--serif);font-size:14.5px;color:var(--text2);margin:2px 0 12px;font-style:italic}
+  .evnow b{font-style:normal;color:var(--text);font-weight:600}
+  .evnow .d{font-family:var(--mono);font-size:11.5px;color:var(--text3);font-style:normal}
+  #tlbox{border:1px solid var(--line);border-radius:4px;background:var(--panel);padding:8px 4px 2px}
+  #tlbox svg{display:block;cursor:crosshair}
+  /* assessment */
+  .assess{display:grid;grid-template-columns:1fr 330px;gap:26px}
+  @media(max-width:880px){.assess{grid-template-columns:1fr}}
+  .vsec{margin-bottom:16px}
+  .vt{font-family:var(--sans);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:6px;display:flex;justify-content:space-between}
+  .vt .src{text-transform:none;letter-spacing:.02em;font-family:var(--mono)}
+  .vline{display:flex;justify-content:space-between;gap:10px;padding:4.5px 0;border-bottom:1px dotted #2b3036;font-size:13.5px;font-family:var(--sans)}
+  .vline .vl{color:var(--text2)}
+  .vline .vv{font-family:var(--mono);font-size:13px;color:var(--text);text-align:right;white-space:nowrap}
+  .conduct{font-family:var(--serif);font-size:14px;color:var(--text2);padding:10px 12px;background:var(--panel);border-left:2px solid var(--line2);line-height:1.65}
+  .sevbox{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:18px}
+  .sevbox .rl{font-family:var(--sans);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3)}
+  .sevbox .rv{font-family:var(--mono);font-size:42px;font-weight:500;line-height:1.05;margin-top:3px}
+  .sevband{height:5px;border-radius:2px;margin-top:10px;background:linear-gradient(90deg,var(--sev-lo),var(--sev-mid),var(--sev-hi));position:relative}
+  .sevmark{position:absolute;top:-4px;width:2.5px;height:13px;background:var(--text);border-radius:1px;transition:left .2s ease}
+  .rw{font-family:var(--sans);font-size:12.5px;color:var(--text2);margin-top:9px}
+  .phname{font-family:var(--sans);font-size:13px;font-weight:600;margin-top:4px}
+  .phact{font-family:var(--sans);font-size:12px;color:var(--text2);font-weight:400}
+  .because{font-family:var(--serif);font-size:13.5px;font-style:italic;color:var(--text2);margin-top:10px;line-height:1.6}
+  .numline{margin-top:12px}
+  .krow{display:flex;align-items:baseline;gap:8px;margin-top:11px;font-family:var(--sans)}
+  .krow .kn{font-size:12.5px;color:var(--text);font-weight:500}
+  .krow .kk{font-family:var(--mono);font-size:10.5px;color:var(--text3)}
+  .krow .kb{font-size:12px;font-weight:600;margin-left:auto}
+  .krow .kv{font-family:var(--mono);font-size:11px;color:var(--text3);width:34px;text-align:right}
+  .ktrack{background:var(--field);border-radius:2px;height:5px;overflow:hidden;margin-top:4px}
+  .kreason{font-family:var(--sans);font-size:11px;color:var(--text3);margin-top:3px;line-height:1.45}
+  .calcdet{border:none;border-top:1px solid var(--line);margin-top:14px}
+  .calcdet summary{padding:9px 0 2px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:400}
+  .calcdet summary:hover{color:var(--text2)}
+  .calcnote{font-family:var(--sans);font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5}
+  /* satellite panel */
+  .satgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:880px){.satgrid{grid-template-columns:repeat(2,1fr)}}
+  .satcard{margin:0}
+  .satimg{position:relative;aspect-ratio:1/1;background:#14161a;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  .satimg img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.85) brightness(.95)}
+  .satbox{position:absolute;left:36%;top:74%;width:17%;height:17%;border:1.5px solid #d95c5c;box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+  .satfb{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:14px;font-family:var(--mono);font-size:10.5px;color:var(--text3);text-align:center;line-height:1.6}
+  .satcard figcaption{font-family:var(--sans);font-size:11.5px;color:var(--text2);margin-top:6px;line-height:1.5}
+  .satcard .sd{font-family:var(--mono);color:var(--text3);font-size:10.5px;display:block}
+  .satcard .sh{font-family:var(--mono);font-size:10.5px}
+  /* date-linked satellite viewer */
+  .satmain{position:relative;width:100%;aspect-ratio:2/1;background:#101216;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  .satpair{position:absolute;inset:0;display:flex}
+  .satpair img{width:50%;height:100%;object-fit:cover;display:block;filter:saturate(.9) brightness(.97)}
+  .satlocal{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
+  .satbox2{position:absolute;left:18.5%;top:78%;width:6.5%;height:13%;border:1.5px solid #d95c5c;box-shadow:0 0 0 1px rgba(0,0,0,.5);z-index:3}
+  .satstamp{position:absolute;left:10px;top:10px;z-index:4;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:#eae8e1;background:rgba(20,22,26,.82);border:1px solid var(--line);border-radius:3px;padding:5px 10px}
+  .satstamp b{font-weight:500}
+  .satfb2{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:1;padding:20px;font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;line-height:1.8}
+  .satmodes{display:flex;gap:6px;margin-bottom:10px}
+  .smode{background:transparent;border:1px solid var(--line);color:var(--text3);border-radius:3px;padding:6px 12px;font-size:11.5px;font-family:var(--mono);cursor:pointer}
+  .smode:hover{border-color:var(--line2);color:var(--text2)}
+  .smode.on{border-color:var(--text3);color:var(--text);background:var(--panel2)}
+  #satLeaflet{position:absolute;inset:0;background:#101216}
+  .satmain .satstamp{z-index:1000;pointer-events:none}
+  .leaflet-container{font-family:var(--sans);background:#101216}
+  @keyframes radarPulse{0%{transform:scale(0.2);opacity:0.8}100%{transform:scale(1.6);opacity:0}}
+  .radar-ring{border:2px solid #fff;border-radius:50%;position:absolute;width:80px;height:80px;margin-left:-40px;margin-top:-40px;animation:radarPulse 1.6s ease-out infinite;pointer-events:none}
+  .satmain.city{aspect-ratio:3/2}
+  .satgrid2{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)}
+  .satgrid2 img{width:100%;height:100%;object-fit:cover;display:block}
+  .dom{font-family:var(--sans);font-size:12px;color:var(--text3);margin-top:4px}
+  .dom b{color:var(--text2);font-weight:500}
+  .crow{display:grid;grid-template-columns:100px 1fr 44px;gap:9px;align-items:center;margin-bottom:7px;font-family:var(--sans)}
+  .crow .cl{font-size:12px;color:var(--text2)}
+  .crow .cv{font-family:var(--mono);font-size:12.5px;color:var(--text);text-align:right}
+  .bartrack{background:var(--field);border-radius:2px;height:8px;overflow:hidden}
+  .barfill{height:100%;transition:width .2s ease}
+  .pline{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12.5px;color:var(--text3);margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+  .pline b{color:var(--text2);font-weight:500}
+  .formula{font-family:var(--mono);font-size:11.5px;color:var(--text3);margin-top:12px;line-height:1.8}
+  .formula b{color:var(--text2)}
+  .aggstep{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  .aggstep .st{font-family:var(--sans);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+  .aggstep .st b{color:var(--text2);font-weight:600}
+  .stack{display:flex;height:20px;border-radius:2px;overflow:hidden;background:var(--field)}
+  .stack .seg{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:#191b1e;font-weight:500;min-width:0;transition:width .25s ease}
+  .shares{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:5px}
+  .shares b{color:var(--text2);font-weight:500}
+  .plainx{font-family:var(--serif);font-size:13px;color:var(--text2);font-style:italic;margin-top:9px;line-height:1.6}
+  /* conclusion */
+  .conc{font-size:16px;line-height:1.8;max-width:860px}
+  .conc p{margin-bottom:13px}
+  .conc .ref{font-family:var(--mono);font-size:10.5px;color:var(--text3);vertical-align:super}
+  .conc .lede{font-weight:600}
+  /* methods & refs */
+  details{border-bottom:1px solid var(--line)}
+  details:first-of-type{border-top:1px solid var(--line)}
+  summary{padding:13px 4px;cursor:pointer;font-family:var(--sans);font-weight:500;font-size:14px;color:var(--text);list-style:none;display:flex;justify-content:space-between}
+  summary::after{content:'+';font-family:var(--mono);color:var(--text3)}
+  details[open] summary::after{content:'–'}
+  .dbody{padding:2px 4px 16px;color:var(--text2);font-size:14px}
+  .dbody p{margin-bottom:9px}
+  .dbody code{font-family:var(--mono);font-size:12.5px;background:var(--field);padding:1px 5px;border-radius:3px;color:var(--text)}
+  ol.refs{padding-left:22px;max-width:860px}
+  ol.refs li{font-size:14px;margin-bottom:9px;color:var(--text2)}
+  .note{font-family:var(--sans);font-size:12px;color:var(--text3);margin-top:16px;border-left:2px solid var(--line2);padding-left:12px;max-width:760px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="mast"><span>Working paper — research prototype</span><span>Severity module · not operational guidance</span></div>
+  <header>
+    <h1>Humanitarian corridors under siege: a daily severity model of civilian evacuation from Mariupol</h1>
+    <p class="sub">The severity axis of a three-axis evacuation decision matrix (Severity × Feasibility × Destination viability), computed for each day of the siege window, 5 March – 20 May 2022, from ACLED event data, ERA5-referenced temperature, the documented corridor record, and WorldPop demographics. <i>Select a date in §2 to generate the situation assessment in force that day.</i></p>
+    <div class="meta">RQ · How can and should AI tools be used to enhance the protection and evacuation of civilians during armed conflict, and how do they support or challenge obligations under IHL?</div>
+  </header>
+
+  <section>
+    <div class="shead"><span class="n">§1</span><h2>Severity timeline &amp; date selection</h2><span class="r">Fig. 1 · model output, p = 6</span></div>
+    <div class="regsel" id="regSel"></div>
+    <div class="datebar">
+      <button class="dnav" id="prevD" title="previous day">‹</button>
+      <div class="dateshow" id="dateShow"></div>
+      <button class="dnav" id="nextD" title="next day">›</button>
+      <button class="evnav" id="prevEv">‹ previous event</button>
+      <button class="evnav" id="nextEv">next event ›</button>
+    </div>
+    <div class="evnow" id="evNow"></div>
+    <div id="tlbox"></div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="n">§2</span><h2>Corridor geography</h2><span class="r">Fig. 2</span></div>
+    <div class="mapfig" id="mapbox"></div>
+    <div class="maplegend">
+      <span><i style="background:var(--failed)"></i>Announced, failed · 5–13 Mar</span>
+      <span><i style="background:var(--self)"></i>Self-evacuation · 14 Mar – 29 Apr</span>
+      <span><i style="background:var(--human)"></i>Organized (UN/ICRC) · 30 Apr – 7 May</span>
+      <span><i style="background:var(--russia)"></i>Russia-bound (all phases) · filtration</span>
+    </div>
+    <p class="caption">Fig. 2 — Evacuation corridors from Mariupol, March–May 2022. Hatched area: territory under Russian control (approximate, mid-March); dashed line: approximate front line. The corridor corresponding to the regime selected in §1 is emphasised, and the inset reports the composite severity for the selected date with its component contributors; the encirclement ring around Mariupol is coloured and scaled by severity. Westbound movement to Zaporizhzhia crossed Russian-held territory and checkpoints between Manhush and Vasylivka; <b>the eastbound route into Russian-controlled territory via Bezimenne filtration operated in parallel throughout all phases</b>, and during the UN/ICRC operation some evacuees proceeded to Russian-controlled areas rather than Zaporizhzhia. Schematic — positions approximate.</p>
+  </section>
+
+  <section>
+    <div class="shead"><span class="n">§3</span><h2>Situation assessment</h2><span class="r" id="assessDate"></span></div>
+    <div class="assess">
+      <div id="varsBox"></div>
+      <div>
+        <div class="sevbox">
+          <div class="rl">Composite severity</div>
+          <div class="rv" id="sevVal">–</div>
+          <div class="phname" id="phaseName"></div>
+          <div class="because" id="becauseLine"></div>
+          <div class="numline" id="numLine"></div>
+          <div id="compBox" style="margin-top:8px"></div>
+          <div class="pline" style="margin-top:16px"><span>Vulnerability weight Vw</span><b>1.114</b></div>
+          <div class="pline" style="border:none;padding-top:2px"><span>Priority = S × Vw</span><b id="priVal">–</b></div>
+          <details class="calcdet"><summary>Show calculation</summary><div class="formula" id="formulaLine"></div></details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="concSection">
+    <div class="shead"><span class="n">§4</span><h2>Assessment conclusion</h2><span class="r">generated from §3</span></div>
+    <div class="conc" id="concBox"></div>
+  </section>
+
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+// Hide §4 when inside iframe (it renders in parent combined page instead)
+if(window.parent !== window){ document.getElementById('concSection').style.display='none'; }
+const clamp = v => Math.max(0, Math.min(1, v));
+const powerMean = (xs,p) => Math.pow(xs.reduce((a,x)=>a+Math.pow(x,p),0)/xs.length, 1/p);
+const sevCol = x => x<0.4?'var(--sev-lo)':x<0.7?'var(--sev-mid)':'var(--sev-hi)';
+/* Five-phase classification (presentation aligned with the INFORM Severity / IPC 5-category convention) */
+const PHASES = [
+  {t:0.20, n:1, name:'Minimal',  act:'routine monitoring',                          hex:'#43b795'},
+  {t:0.40, n:2, name:'Concern',  act:'contingency planning; register vulnerable groups', hex:'#8fae62'},
+  {t:0.55, n:3, name:'Serious',  act:'evacuation planning; negotiate access',       hex:'#cf9a4b'},
+  {t:0.70, n:4, name:'High',     act:'evacuation warranted',                        hex:'#d97f4b'},
+  {t:9,    n:5, name:'Critical', act:'immediate protective action',                 hex:'#d95c5c'}];
+const phaseOf = s => PHASES.find(p=>s<p.t);
+const bandOf = x => x<0.2?['Low','#43b795']:x<0.4?['Moderate','#8fae62']:x<0.55?['Elevated','#cf9a4b']:x<0.7?['High','#d97f4b']:['Critical','#d95c5c'];
+/* Infrastructure damage H — share of structures visibly damaged, calibrated to
+   published UNOSAT assessments (code CE20220223UKR) [12]: 14 Mar 2022 ≈ 4% of
+   17,594 structures (Livoberezhnyi/Zhovtnevyi AOI); 26 Mar rapid assessment: 16%
+   of 500 m cells damaged (different unit, used qualitatively); 7–12 May 2022 ≈ 32%
+   (5,647 structures). Interpolated between assessment dates; UNOSAT counts only
+   damage visible in imagery, so H is a lower bound. */
+const DMG_ANCH = [[0,0.02],[9,0.04],[21,0.14],[63,0.32],[76,0.33]];
+function dmgOf(i){
+  for (let k=0;k<DMG_ANCH.length-1;k++){
+    const [x0,y0]=DMG_ANCH[k],[x1,y1]=DMG_ANCH[k+1];
+    if (i>=x0 && i<=x1) return y0+(y1-y0)*(i-x0)/(x1-x0);
+  }
+  return 0.90;
+}
+const P_EXP = 6;
+const B = {bI:10, bP:6, bL:15, bT:18, bTf:-10, bD:60};
+const VWI = 1.114;
+
+/* ---- calendar: 5 Mar – 20 May 2022 ---- */
+const START = new Date(Date.UTC(2022,2,5));
+const NDAYS = 77;
+const fmt = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+const dayDate = i => new Date(START.getTime() + i*86400000);
+
+/* ---- kinetic phases (ACLED windows) ---- */
+function kinetics(i){
+  const d = dayDate(i), m = d.getUTCMonth(), day = d.getUTCDate();
+  if (m===2 && day<=9)  return {ev:3.9,  ct:0.185, leth:0.96, imm:1.36, near:1.86, phase:'I'};
+  if (m===2 && day<=15) return {ev:4.8,  ct:0.483, leth:12.9, imm:2.17, near:2.33, phase:'II'};
+  if (m<4 || (m===4 && day<=5)) return {ev:1.96, ct:0.100, leth:1.39, imm:1.35, near:1.39, phase:'III'};
+  return {ev:1.2, ct:0.08, leth:1.0, imm:1.0, near:1.0, phase:'IV (extrapolated)'};
+}
+
+/* ---- corridor regimes, incl. parties' conduct (attributed) ---- */
+const REGIMES = [
+  {from:0, to:8, key:'failed', name:'Announced corridors — failed', hex:'#d95c5c', viol:1.00, cons:0.50,
+   txt:'corridors announced for 5–7 March collapsed under renewed shelling; no safe passage in effect',
+   ru:'The Russian MoD announced ceasefires for the 5–7 March corridors; the routes came under renewed shelling, with each party attributing responsibility to the other. Moscow\u2019s 7 March proposal routed corridors toward Russia and Belarus and was rejected by Kyiv (OCHA/OHCHR reporting).'},
+  {from:9, to:55, key:'self', name:'Self-evacuation', hex:'#43b795', viol:0.67, cons:0.75,
+   txt:'private vehicles departing via Berdiansk toward Zaporizhzhia without a negotiated ceasefire; parallel eastbound movement into Russian-controlled territory via Bezimenne continued throughout',
+   ru:'The Zaporizhzhia-bound route crossed Russian-held territory and multiple Russian checkpoints between Manhush and Vasylivka; passage was intermittently permitted and convoys were turned back on some days. The ICRC relief convoy for Mariupol was repeatedly denied passage at Berdiansk (OCHA/ICRC reporting).'},
+  {from:56, to:63, key:'human', name:'Organized humanitarian evacuation', hex:'#988fe0', viol:0.60, cons:0.25,
+   txt:'UN/ICRC-escorted evacuation from the Azovstal plant under negotiated arrangements; convoys to Zaporizhzhia via Bezimenne screening, with some evacuees proceeding to Russian-controlled territory',
+   ru:'Following the UN Secretary-General\u2019s 26 April meetings in Moscow, Russia agreed in principle to UN and ICRC involvement; evacuees exited through the Russian-controlled screening point at Bezimenne before onward transfer to Zaporizhzhia (UN/OCHA reporting).'},
+  {from:64, to:76, key:'none', name:'No organized corridor — siege endgame', hex:'#8b929b', viol:0.70, cons:0.90,
+   txt:'no organized civilian corridor; remaining movement subject to adversary screening (filtration)',
+   ru:'No agreed civilian passage was in effect; OHCHR documented departures through filtration procedures to Russian-controlled territory, including reported transfers onward to the Russian Federation (OHCHR/HRMMU reporting).'}
+];
+const regimeOf = i => REGIMES.find(r=>i>=r.from && i<=r.to);
+
+/* ---- temperature climatology (interpolated) ---- */
+const T_ANCH = [[0,-1],[5,-3],[8,-6],[11,-4],[13,2],[20,5],[31,9],[46,12],[61,15],[76,18]];
+function tempOf(i){
+  for (let k=0;k<T_ANCH.length-1;k++){
+    const [x0,y0]=T_ANCH[k],[x1,y1]=T_ANCH[k+1];
+    if (i>=x0 && i<=x1) return y0+(y1-y0)*(i-x0)/(x1-x0);
+  }
+  return 18;
+}
+const siegeOf = i => i + 3;
+
+const EVENTS = [
+  {i:0,  t:'First corridor announced; collapses under shelling'},
+  {i:2,  t:'Moscow proposes corridors to Russia/Belarus; rejected'},
+  {i:4,  t:'Maternity hospital struck'},
+  {i:9,  t:'First private-car convoy reaches Zaporizhzhia'},
+  {i:11, t:'Drama theatre struck'},
+  {i:27, t:'ICRC convoy blocked at Berdiansk'},
+  {i:52, t:'UN Secretary-General in Moscow; evacuation agreed in principle'},
+  {i:56, t:'UN/ICRC Azovstal evacuations begin'},
+  {i:63, t:'Civilian evacuation from Azovstal completed'},
+  {i:76, t:'Azovstal garrison surrender complete; siege ends'}
+];
+
+/* ---- model ---- */
+function computeDay(i){
+  const k = kinetics(i), r = regimeOf(i), T = tempOf(i), sg = siegeOf(i);
+  const comps = {
+    I: clamp(k.ev/B.bI),
+    P: clamp((k.imm + 0.5*k.near)/B.bP),
+    R: (clamp(k.ct)+clamp(k.leth/B.bL)+clamp(r.viol)+clamp(r.cons))/4,
+    C: clamp((B.bT-T)/(B.bT-B.bTf)),
+    D: clamp(sg/B.bD),
+    H: clamp(dmgOf(i))
+  };
+  return {k,r,T,sg,comps, sev:powerMean(Object.values(comps),P_EXP), pri:0, get p(){return this.sev*VWI}};
+}
+const SERIES = Array.from({length:NDAYS},(_,i)=>computeDay(i));
+
+/* ---- Fig. 1: cartographic map ---- */
+function drawMap(activeKey, s, di){
+  const dimOp = 0.16;
+  const R = k => activeKey===k ? {op:1, w:2.6} : {op:dimOp, w:1.5};
+  const rf=R('failed'), rs=R('self'), rh=R('human');
+  const rr = (activeKey==='none') ? {op:1,w:2.6} : {op:dimOp,w:1.5};
+  const sevHex = s.sev<0.4?'#43b795':s.sev<0.7?'#cf9a4b':'#d95c5c';
+  const cls = ('PHASE '+phaseOf(s.sev).n+'/5 · '+phaseOf(s.sev).name).toUpperCase();
+  const ord = Object.entries(s.comps).sort((a,b)=>b[1]-a[1]);
+  const domK = ord[0][0];
+  const CNAMES = {I:'Intensity',P:'Proximity',R:'Protection',C:'Cold',D:'Deprivation',H:'Infrastructure'};
+  const barW=20, barGap=8, barMaxH=26, barBase=84, barX0=316;
+  const sevPanel = `
+  <g font-family="IBM Plex Mono">
+    <rect x="300" y="14" width="216" height="118" rx="3" fill="#191b1e" opacity="0.92" stroke="#33373d"/>
+    <text x="314" y="32" fill="#71767d" font-size="9.5" letter-spacing="1">SEVERITY · ${dayDate(di).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'}).toUpperCase()}</text>
+    <text x="314" y="58" fill="${sevHex}" font-size="23" font-weight="500">${s.sev.toFixed(2)}</text>
+    <text x="380" y="57" fill="#a6aab0" font-size="10.5" letter-spacing="1">${cls}</text>
+    ${['I','P','R','C','D','H'].map((k,j)=>{
+      const x = barX0 + j*(barW+barGap);
+      const h = Math.max(1.5, s.comps[k]*barMaxH);
+      const dom = k===domK;
+      return `<rect x="${x}" y="${(barBase-h).toFixed(1)}" width="${barW}" height="${h.toFixed(1)}" fill="${s.comps[k]<0.4?'#43b795':s.comps[k]<0.7?'#cf9a4b':'#d95c5c'}" opacity="${dom?1:0.45}"/>
+      <text x="${x+barW/2}" y="${barBase+12}" fill="${dom?'#eae8e1':'#71767d'}" font-size="9.5" text-anchor="middle">${k}</text>
+      <title>${CNAMES[k]}: ${s.comps[k].toFixed(2)}${dom?' — dominant':''}</title>`;
+    }).join('')}
+    <text x="314" y="112" fill="#71767d" font-size="9" letter-spacing=".5">DOMINANT: ${CNAMES[domK].toUpperCase()} ${ord[0][1].toFixed(2)}</text>
+  </g>`;
+  const ringR = 12 + 8*s.sev;
+  const regHex = (REGIMES.find(r=>r.key===activeKey)||{}).hex || '#8b929b';
+  const zapMark = (lbl)=>`<circle cx="102" cy="92" r="13" fill="none" stroke="${regHex}" stroke-width="1.5" opacity="0.95"/>
+       <text x="116" y="122" fill="${regHex}" font-size="9.5" font-family="IBM Plex Mono" letter-spacing="1.5">◎ ${lbl}</text>`;
+  const rusMark = (lbl)=>`<circle cx="605" cy="352" r="10" fill="none" stroke="#cf9a4b" stroke-width="1.5" opacity="0.95"/>
+       <text x="600" y="304" fill="#cf9a4b" font-size="9.5" font-family="IBM Plex Mono" text-anchor="end" letter-spacing="1.5">◎ ${lbl}</text>`;
+  const destMark =
+    activeKey==='none'  ? rusMark('DESTINATION · VIA FILTRATION') :
+    activeKey==='human' ? zapMark('DESTINATION (UN CONVOYS)') + rusMark('ALTERNATE: RU-CONTROLLED') :
+                          zapMark('DESTINATION') + rusMark('RU-BOUND ROUTE ACTIVE');
+  $('mapbox').innerHTML = `
+<svg width="100%" viewBox="0 0 680 480" role="img" style="display:block">
+<title>Evacuation corridors from Mariupol, March–May 2022</title>
+<defs>
+  <pattern id="occ" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+    <line x1="0" y1="0" x2="0" y2="9" stroke="#d95c5c" stroke-width="1" opacity="0.14"/>
+  </pattern>
+  <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round"/>
+  </marker>
+</defs>
+<rect width="680" height="480" fill="#20232a"/>
+<g stroke="#282c33" stroke-width="1">
+  ${[85,170,255,340,425,510,595].map(x=>`<line x1="${x}" y1="0" x2="${x}" y2="480"/>`).join('')}
+  ${[96,192,288,384].map(y=>`<line x1="0" y1="${y}" x2="680" y2="${y}"/>`).join('')}
+</g>
+<path d="M0,148 C60,142 100,140 130,146 C180,156 230,172 300,182 C380,193 460,202 530,216 C590,228 640,234 680,238 L680,480 L0,480 Z" fill="url(#occ)"/>
+<path d="M0,148 C60,142 100,140 130,146 C180,156 230,172 300,182 C380,193 460,202 530,216 C590,228 640,234 680,238" fill="none" stroke="#d95c5c" stroke-width="1.4" stroke-dasharray="7 4" opacity="0.7"/>
+<text x="18" y="140" fill="#8b929b" font-size="10.5" font-family="IBM Plex Mono">APPROX. FRONT LINE, MID-MARCH 2022</text>
+<text x="120" y="292" fill="#9c6a6a" font-size="10.5" font-family="IBM Plex Mono">RUSSIAN-CONTROLLED (APPROX.)</text>
+<path d="M210,392 Q360,430 680,396 L680,480 L210,480 Z" fill="#1a2028"/>
+<text x="430" y="452" fill="#5d6673" font-size="12" font-family="Source Serif 4" font-style="italic" text-anchor="middle">Sea of Azov</text>
+<line x1="640" y1="80" x2="640" y2="394" stroke="#4a505a" stroke-width="1" stroke-dasharray="2 4"/>
+<text x="633" y="160" fill="#7c828b" font-size="11.5" font-family="Archivo" text-anchor="end">RUSSIAN FEDERATION</text>
+<path d="M497,342 C470,332 460,346 452,350 L272,346 C250,300 244,270 238,228 C230,195 170,190 158,168 C140,135 122,118 110,102" fill="none" stroke="var(--failed)" stroke-width="${rf.w}" stroke-dasharray="5 5" opacity="${rf.op}" ${activeKey==='failed'?'marker-end="url(#arr)"':''}/>
+<path d="M500,352 C472,344 462,356 452,360 L268,356 C244,308 236,272 228,230 C220,198 160,198 148,174 C130,142 114,126 102,110" fill="none" stroke="var(--self)" stroke-width="${rs.w}" opacity="${rs.op}" ${activeKey==='self'?'marker-end="url(#arr)"':''}/>
+<path d="M503,362 C474,356 464,366 452,370 L264,366 C238,314 228,274 218,232 C210,202 150,206 138,180 C122,150 106,134 94,118" fill="none" stroke="var(--human)" stroke-width="${rh.w}" stroke-dasharray="10 5" opacity="${rh.op}" ${activeKey==='human'?'marker-end="url(#arr)"':''}/>
+<path d="M512,348 L618,352" fill="none" stroke="var(--russia)" stroke-width="${rr.w}" opacity="${Math.max(rr.op,0.55)}" ${activeKey==='none'?'marker-end="url(#arr)"':''}/>
+<g font-family="Archivo" font-size="12">
+  <circle cx="102" cy="92" r="6" fill="#43b795"/>
+  <text x="116" y="88" fill="#eae8e1" font-weight="600" font-size="13">Zaporizhzhia</text>
+  <text x="116" y="104" fill="#8b929b" font-size="11.5">Ukrainian-controlled endpoint</text>
+  <circle cx="152" cy="170" r="3.5" fill="#a2a8ae"/>
+  <text x="164" y="164" fill="#a2a8ae" font-size="11.5">Vasylivka</text>
+  <text x="164" y="178" fill="#71767d" font-size="10.5">last RU checkpoint</text>
+  <circle cx="232" cy="228" r="3" fill="#7c828b"/><text x="244" y="224" fill="#8b929b" font-size="11.5">Tokmak</text>
+  <circle cx="268" cy="356" r="4" fill="#7c828b"/>
+  <text x="256" y="336" fill="#8b929b" font-size="11.5" text-anchor="end">Berdiansk · transit node</text>
+  <circle cx="452" cy="362" r="3" fill="#7c828b"/><text x="446" y="386" fill="#8b929b" font-size="11.5" text-anchor="end">Manhush</text>
+  <circle cx="505" cy="352" r="6" fill="${sevHex}"/>
+  <circle cx="505" cy="352" r="${ringR.toFixed(1)}" fill="none" stroke="${sevHex}" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.85"/>
+  <text x="505" y="322" fill="#eae8e1" font-weight="600" font-size="13" text-anchor="middle">Mariupol</text>
+  <text x="490" y="336" fill="#9c6a6a" font-size="10.5" text-anchor="end">encircled from 2 Mar</text>
+  <circle cx="548" cy="350" r="3.5" fill="#cf9a4b"/>
+  <text x="551" y="378" fill="#b08a4e" font-size="11" text-anchor="middle">Bezimenne · filtration</text>
+  <circle cx="605" cy="352" r="3" fill="#7c828b"/><text x="600" y="338" fill="#8b929b" font-size="11.5" text-anchor="end">Novoazovsk</text>
+</g>
+${destMark}
+${sevPanel}
+<g font-family="IBM Plex Mono" font-size="10" fill="#71767d">
+  <line x1="24" y1="452" x2="150" y2="452" stroke="#71767d" stroke-width="1.5"/>
+  <line x1="24" y1="448" x2="24" y2="456" stroke="#71767d" stroke-width="1.5"/>
+  <line x1="150" y1="448" x2="150" y2="456" stroke="#71767d" stroke-width="1.5"/>
+  <text x="24" y="468">0</text><text x="132" y="468">≈50 km</text>
+  <text x="30" y="34">N</text><path d="M33,40 L33,58" stroke="#71767d" stroke-width="1.3" marker-start="url(#arr)"/>
+</g>
+</svg>`;
+}
+
+/* ---- Fig. 2: timeline ---- */
+const TW=1000, TH=235, ML=44, MR=14, MT=18, MB=34;
+const xOf = i => ML + (TW-ML-MR)*i/(NDAYS-1);
+const yOf = s => MT + (TH-MT-MB)*(1-s);
+function drawTimeline(sel){
+  const line = SERIES.map((s,i)=>(i?'L':'M')+xOf(i).toFixed(1)+','+yOf(s.sev).toFixed(1)).join(' ');
+  const area = line + ` L${xOf(NDAYS-1)},${yOf(0)} L${xOf(0)},${yOf(0)} Z`;
+  const bands = REGIMES.map(r=>`<rect x="${xOf(r.from)}" y="${MT}" width="${xOf(r.to)-xOf(r.from)}" height="${TH-MT-MB}" fill="${r.hex}" opacity="0.06"/>
+    <text x="${(xOf(r.from)+xOf(r.to))/2}" y="${MT+11}" fill="${r.hex}" font-size="9.5" font-family="IBM Plex Mono" text-anchor="middle" letter-spacing="1">${r.key==='none'?'NO CORRIDOR':r.key.toUpperCase()}</text>`).join('');
+  const grid = [0,0.25,0.5,0.75,1].map(v=>`<line x1="${ML}" y1="${yOf(v)}" x2="${TW-MR}" y2="${yOf(v)}" stroke="#2b3036" stroke-width="1"/><text x="${ML-7}" y="${yOf(v)+3.5}" fill="#71767d" font-size="10" font-family="IBM Plex Mono" text-anchor="end">${v.toFixed(2)}</text>`).join('');
+  const ticks = (()=>{const o=[];for(let i=0;i<NDAYS;i++){const d=dayDate(i);if(d.getUTCDate()===1||i===0)o.push([i,d.toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'})]);}o.push([NDAYS-1,'20 May']);
+    return o.map(([i,l])=>`<text x="${xOf(i)}" y="${TH-12}" fill="#71767d" font-size="10.5" font-family="IBM Plex Mono" text-anchor="middle">${l}</text>`).join('');})();
+  const evm = EVENTS.map(e=>`<circle cx="${xOf(e.i)}" cy="${yOf(SERIES[e.i].sev)}" r="3.2" fill="#191b1e" stroke="#a6aab0" stroke-width="1.2"><title>${fmt(dayDate(e.i))} — ${e.t}</title></circle>`).join('');
+  const s = SERIES[sel];
+  $('tlbox').innerHTML = `<svg width="100%" viewBox="0 0 ${TW} ${TH}" id="tlsvg">
+    <text x="${ML}" y="${MT-6}" fill="#71767d" font-size="10" font-family="IBM Plex Mono" letter-spacing="1">COMPOSITE SEVERITY S · DAILY · p = 6</text>
+    ${bands}${grid}
+    <path d="${area}" fill="#c8ccd2" opacity="0.05"/>
+    <path d="${line}" fill="none" stroke="#c8ccd2" stroke-width="1.7"/>
+    ${evm}
+    <line x1="${xOf(sel)}" y1="${MT}" x2="${xOf(sel)}" y2="${TH-MB}" stroke="#eae8e1" stroke-width="1.1" stroke-dasharray="2 3"/>
+    <circle cx="${xOf(sel)}" cy="${yOf(s.sev)}" r="4.6" fill="${s.r.hex}" stroke="#eae8e1" stroke-width="1.4"/>
+    ${ticks}
+  </svg>`;
+  $('tlsvg').addEventListener('click', ev=>{
+    const rect = $('tlsvg').getBoundingClientRect();
+    const px = (ev.clientX-rect.left)/rect.width*TW;
+    setDay(Math.max(0,Math.min(NDAYS-1,Math.round((px-ML)/(TW-ML-MR)*(NDAYS-1)))));
+  });
+}
+
+/* ---- §3 assessment ---- */
+const NM = {I:'Intensity', P:'Proximity', R:'Protection', C:'Cold', D:'Deprivation', H:'Infrastructure'};
+function renderAssessment(i){
+  const s = SERIES[i];
+  $('assessDate').textContent = fmt(dayDate(i));
+  $('varsBox').innerHTML = `
+    <div class="vsec"><div class="vt"><span>Corridor regime in effect</span><span class="src">corridor record [10]</span></div>
+      <div class="vline"><span class="vl">Regime</span><span class="vv" style="color:${s.r.hex}">${s.r.name}</span></div>
+      <div class="vline"><span class="vl">Corridor violation history</span><span class="vv">${s.r.viol.toFixed(2)}</span></div>
+      <div class="vline"><span class="vl">Consent / filtration exposure</span><span class="vv">${s.r.cons.toFixed(2)}</span></div></div>
+    <div class="vsec"><div class="vt"><span>Parties' conduct</span><span class="src">OCHA / OHCHR [10, 11]</span></div>
+      <div class="conduct">${s.r.ru}</div></div>
+    <div class="vsec"><div class="vt"><span>Hostilities — ACLED phase ${s.k.phase}</span><span class="src">ACLED [1]</span></div>
+      <div class="vline"><span class="vl">Violent events per day (city)</span><span class="vv">${s.k.ev.toFixed(2)}</span></div>
+      <div class="vline"><span class="vl">Civilian-targeting share</span><span class="vv">${s.k.ct.toFixed(3)}</span></div>
+      <div class="vline"><span class="vl">Fatalities per event</span><span class="vv">${s.k.leth.toFixed(2)}</span></div>
+      <div class="vline"><span class="vl">Armed activity ≤5 km / ≤15 km per day</span><span class="vv">${s.k.imm.toFixed(2)} / ${s.k.near.toFixed(2)}</span></div></div>
+    <div class="vsec"><div class="vt"><span>Environment &amp; deprivation</span><span class="src">ERA5 [7] · OCHA [10]</span></div>
+      <div class="vline"><span class="vl">Mean daily temperature</span><span class="vv">${s.T.toFixed(1)} °C</span></div>
+      <div class="vline"><span class="vl">Days under encirclement (since 2 Mar)</span><span class="vv">${s.sg}</span></div>
+      <div class="vline"><span class="vl">Aid convoys reached the city to date</span><span class="vv">0</span></div></div>
+    <div class="vsec"><div class="vt"><span>Infrastructure — satellite-derived</span><span class="src">UNOSAT / VIIRS Black Marble [12, 15]</span></div>
+      <div class="vline"><span class="vl">Building stock damaged or destroyed (cumulative)</span><span class="vv">≈${Math.round(dmgOf(i)*100)}%</span></div>
+      <div class="vline"><span class="vl">Basis</span><span class="vv" style="white-space:normal;text-align:right;font-size:11px;color:var(--text3)">illustrative anchors, pending UNOSAT calibration</span></div></div>
+    <div class="vsec"><div class="vt"><span>Population exposed</span><span class="src">WorldPop [8]</span></div>
+      <div class="vline"><span class="vl">Civilian population (pre-siege)</span><span class="vv">343,598</span></div>
+      <div class="vline"><span class="vl">Children · elderly · disabled</span><span class="vv">32,926 · 73,723 · ≈24,288</span></div></div>`;
+
+  /* component bands with reasons */
+  const reasons = {
+    I: `${s.k.ev.toFixed(1)} violent events/day inside the city`,
+    P: `${s.k.imm.toFixed(1)}/day within 5 km · ${s.k.near.toFixed(1)}/day within 15 km`,
+    R: `${(s.k.ct*100).toFixed(0)}% of events target civilians · ${s.k.leth.toFixed(1)} deaths/event · ${(s.r.viol*100).toFixed(0)}% of corridors violated`,
+    C: `${s.T.toFixed(0)} °C vs 18 °C habitable minimum; no heating since 2 Mar`,
+    D: `day ${s.sg} of encirclement · no relief convoy has reached the city`,
+    H: `≈${Math.round(s.comps.H*100)}% of structures visibly damaged (UNOSAT-calibrated; lower bound)`
+  };
+  $('compBox').innerHTML = Object.entries(s.comps).map(([k,x])=>{
+    const [bw,bc] = bandOf(x);
+    return `<div class="krow"><span class="kn">${NM[k]} <span class="kk">${k}</span></span>
+      <span class="kb" style="color:${bc}">${bw}${x>=1?' ▲':''}</span><span class="kv">${x.toFixed(2)}</span></div>
+      <div class="ktrack"><div class="barfill" style="width:${(x*100).toFixed(1)}%;background:${bc}"></div></div>
+      <div class="kreason">${reasons[k]}</div>`;
+  }).join('');
+
+  const ord = Object.entries(s.comps).sort((a,b)=>b[1]-a[1]);
+  const ph = phaseOf(s.sev);
+  $('sevVal').textContent = s.sev.toFixed(2);
+  $('sevVal').style.color = ph.hex;
+  $('phaseName').innerHTML = `<span style="color:${ph.hex}">Phase ${ph.n} of 5 — ${ph.name}</span> <span class="phact">· ${ph.act}</span>`;
+
+  /* because-sentence */
+  const domK2 = ord[0][0];
+  const driverTxt = {
+    I:`the tempo of attacks — ${s.k.ev.toFixed(1)} violent events per day inside the city`,
+    P:`fighting close to populated areas — ${s.k.imm.toFixed(1)} armed actions per day within 5 km`,
+    R:`protection threats — ${(s.k.ct*100).toFixed(0)}% of events target civilians and ${(s.r.viol*100).toFixed(0)}% of announced corridors have been violated`,
+    C:`life-threatening cold — ${s.T.toFixed(0)} °C against the 18 °C habitable minimum, in a city without heating since 2 March`,
+    D:`deprivation — ${s.sg} days encircled with no relief convoy reaching the city`,
+    H:`destruction of the city itself — UNOSAT-calibrated estimate of ${Math.round(s.comps.H*100)}% of structures visibly damaged, a lower bound on the true loss of shelter and services`
+  }[domK2];
+  const easing = (['C','D','H'].includes(domK2) && s.k.ev<3)
+    ? ' Hostilities have eased, but the rating has not — severity follows the worst condition civilians face.' : '';
+  $('becauseLine').textContent = `Driven by ${driverTxt}.${easing}`;
+
+  /* number line: average vs rating vs worst */
+  const vals = Object.values(s.comps);
+  const avg = vals.reduce((a,b)=>a+b,0)/vals.length, worst = Math.max(...vals);
+  const X = v => 12 + v*276;
+  $('numLine').innerHTML = `<svg width="100%" viewBox="0 0 300 56">
+    <line x1="12" y1="29" x2="288" y2="29" stroke="#454b52" stroke-width="1.5"/>
+    <text x="12" y="52" fill="#71767d" font-size="9" font-family="IBM Plex Mono">0</text>
+    <text x="288" y="52" fill="#71767d" font-size="9" font-family="IBM Plex Mono" text-anchor="end">1</text>
+    <line x1="${X(avg).toFixed(1)}" y1="24" x2="${X(avg).toFixed(1)}" y2="34" stroke="#71767d" stroke-width="1.5"/>
+    <text x="${X(avg).toFixed(1)}" y="48" fill="#71767d" font-size="9" font-family="IBM Plex Mono" text-anchor="middle">AVG ${avg.toFixed(2)}</text>
+    <line x1="${X(worst).toFixed(1)}" y1="24" x2="${X(worst).toFixed(1)}" y2="34" stroke="#a06a6a" stroke-width="1.5"/>
+    <text x="${X(worst).toFixed(1)}" y="16" fill="#a06a6a" font-size="9" font-family="IBM Plex Mono" text-anchor="middle">WORST ${worst.toFixed(2)}</text>
+    <circle cx="${X(s.sev).toFixed(1)}" cy="29" r="4.5" fill="${ph.hex}"/>
+    <text x="${Math.min(X(s.sev), X(worst)-52).toFixed(1)}" y="16" fill="${ph.hex}" font-size="9.5" font-weight="600" font-family="IBM Plex Mono" text-anchor="middle">RATING ${s.sev.toFixed(2)}</text>
+  </svg>`;
+  $('priVal').textContent = (s.sev*VWI).toFixed(3);
+
+  /* full calculation, behind the toggle */
+  const pow = Object.entries(s.comps).map(([k,x])=>[k, Math.pow(x,6)]);
+  const sum6 = pow.reduce((a,[,v])=>a+v,0);
+  $('formulaLine').innerHTML =
+    `S = [ (I⁶ + P⁶ + R⁶ + C⁶ + D⁶ + H⁶) / 6 ]<sup>1/6</sup><br>` +
+    `normalised: ${Object.entries(s.comps).map(([k,x])=>k+' = '+x.toFixed(2)).join(' · ')}<br>` +
+    `sixth powers: ${pow.map(([k,v])=>k+'⁶ = '+v.toFixed(3)).join(' · ')} · Σ = ${sum6.toFixed(3)}<br>` +
+    `S = ( ${sum6.toFixed(3)} / 6 )<sup>1/6</sup> = <b>${s.sev.toFixed(3)}</b>` +
+    `<div class="calcnote">The composite always falls between the simple average and the worst component, closer to the worst. The sixth power is an internal weighting device that produces this behaviour; powered values are not shares of causation.</div>`;
+}
+
+/* ---- §4 conclusion ---- */
+function conclusion(i){
+  const s = SERIES[i];
+  const NMl = {I:'hostility intensity', P:'kinetic proximity', R:'protection risk', C:'cold burden', D:'the deprivation clock', H:'infrastructure damage'};
+  const ord = Object.entries(s.comps).sort((a,b)=>b[1]-a[1]);
+  const [dk,dx]=ord[0], [dk2,dx2]=ord[1];
+  const ph = phaseOf(s.sev);
+  const cls = `Phase ${ph.n} of 5, ${ph.name}`;
+  const driver = {
+    I:'the tempo of shelling and armed clashes inside the city',
+    P:'the closeness of active hostilities to populated areas',
+    R:`a civilian-targeting share of ${s.k.ct.toFixed(2)}, lethality of ${s.k.leth.toFixed(1)} fatalities per event, and a corridor record in which ${Math.round(s.r.viol*100)}% of announced passages were shelled or blocked`,
+    C:`sub-habitable temperatures (${s.T.toFixed(0)} °C against the 18 °C Sphere minimum) in a city without heating, power or running water`,
+    D:`${s.sg} days of encirclement with no relief convoy having reached the city${s.comps.D>=1?' — the component has saturated its 60-day ceiling':''}`,
+    H:`satellite-observed damage to roughly ${Math.round(s.comps.H*100)}% of the city's building stock, eliminating shelter and services independently of the daily tempo of attacks`
+  }[dk];
+  const legal = {
+    failed:`Both parties' obligation under GC IV art. 17 to endeavour to conclude local agreements for the evacuation of besieged areas was engaged and unmet: the announced corridors were not honoured, and the violated-passage record (${s.r.viol.toFixed(2)}) measures the gap between announced and honoured commitments <span class="ref">[9]</span>. Moscow's counter-proposal to route civilians toward Russia and Belarus, rejected by Kyiv, illustrates that the destination of a corridor is itself a protection variable, not a logistical detail <span class="ref">[10]</span>.`,
+    self:`Civilians departing without a negotiated ceasefire remained fully protected persons; the prohibition on attacks against civilians (AP I art. 51) and the precautionary obligations of arts. 57–58 applied to every vehicle on the route, while the absence of an agreed corridor left protection contingent on conduct at Russian-held checkpoints between Manhush and Vasylivka <span class="ref">[9, 10]</span>.`,
+    human:`The negotiated, third-party-escorted arrangement — agreed after the UN Secretary-General's Moscow meetings — corresponds most closely to the mechanism GC IV art. 17 envisages. Its timing relative to the severity trajectory, arriving some eight weeks after the modelled peak, is the central accountability finding: the legal mechanism functioned, but late <span class="ref">[9, 10]</span>.`,
+    none:`With no organized corridor and remaining movement subject to filtration, the consent conditions attached to safe passage under GC IV arts. 17 and 23 were not satisfied; the prohibition on starvation of civilians and the duty to allow relief (AP I art. 70; CIHL Rules 53–55) remained engaged, and OHCHR-documented transfers to Russian-controlled territory raise distinct questions under GC IV art. 49 <span class="ref">[9, 11]</span>.`
+  }[s.r.key];
+  const trendNote = (['D','H'].includes(dk)) && s.k.ev<3
+    ? ` Kinetic indicators have declined relative to mid-March, yet composite severity remains at ${cls.toLowerCase()}: under weakest-link aggregation, deprivation and destruction cannot be averaged away by a lull in shelling — the model's central methodological point <span class="ref">[2, 3, 4]</span>.` : '';
+  const concHTML = `
+    <p><span class="lede">As of ${fmt(dayDate(i))}, modelled severity is ${s.sev.toFixed(2)} — ${cls}: ${ph.act}.</span>
+    The corridor regime in effect is <i>${s.r.name.toLowerCase()}</i>: ${s.r.txt}. The dominant component is ${NMl[dk]} (${dx.toFixed(2)}), driven by ${driver}; the second-ranked component is ${NMl[dk2]} (${dx2.toFixed(2)}). Applied to an exposed population of 343,598 — of whom roughly one in three is a child, elderly, or living with a disability <span class="ref">[8]</span> — the vulnerability-weighted priority index is ${(s.sev*VWI).toFixed(2)}.</p>
+    <p>${legal}${trendNote}</p>
+    <p>Assessment: the factual predicate for evacuation — imminent danger to the civilian population combined with denial of objects indispensable to survival — is ${s.sev>=0.5?'clearly established':'developing'} on this date under the model's documented thresholds <span class="ref">[2, 4, 5]</span>. Severity is one axis of the decision matrix; a corridor decision additionally requires the Feasibility and Destination-viability axes, the latter encompassing filtration exposure on adversary-controlled routes.</p>`;
+  $('concBox').innerHTML = concHTML;
+  // Send conclusion to parent page for rendering below feasibility
+  if(window.parent !== window){
+    window.parent.postMessage({type:'conclusion', html:concHTML}, '*');
+  }
+}
+
+/* ---- date control ---- */
+let cur = 11;
+const dShort = i => dayDate(i).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
+function renderEventContext(i){
+  const onDate = EVENTS.find(e=>e.i===i);
+  const prior = EVENTS.filter(e=>e.i<i).pop();
+  const next = EVENTS.find(e=>e.i>i);
+  let html;
+  if (onDate){
+    html = `<span class="d">ON THIS DATE — </span><b>${onDate.t}</b>`;
+  } else if (prior){
+    html = `<span class="d">LATEST DEVELOPMENT · ${dShort(prior.i)} (${i-prior.i} d earlier) — </span>${prior.t}`;
+  } else if (next){
+    html = `<span class="d">NEXT DEVELOPMENT · ${dShort(next.i)} — </span>${next.t}`;
+  } else html = '';
+  $('evNow').innerHTML = html;
+}
+$('regSel').innerHTML = REGIMES.map(r=>
+  `<button class="regbtn" data-key="${r.key}" data-from="${r.from}">
+     <span class="rn"><span class="dot" style="background:${r.hex}"></span>${r.name}</span>
+     <span class="rd">${dShort(r.from)} – ${dShort(r.to)} 2022</span>
+   </button>`).join('');
+document.querySelectorAll('.regbtn').forEach(b=>b.addEventListener('click',()=>setDay(+b.dataset.from)));
+
+function setDay(i){
+  cur = i;
+  $('dateShow').textContent = fmt(dayDate(i));
+  const r = regimeOf(i);
+  document.querySelectorAll('.regbtn').forEach(b=>{
+    const on = b.dataset.key===r.key;
+    b.classList.toggle('on', on);
+    b.style.borderColor = on ? r.hex : '';
+  });
+  drawMap(r.key, SERIES[i], i); drawTimeline(i); renderAssessment(i); conclusion(i); renderEventContext(i);
+}
+
+
+$('prevD').addEventListener('click',()=>setDay(Math.max(0,cur-1)));
+$('nextD').addEventListener('click',()=>setDay(Math.min(NDAYS-1,cur+1)));
+$('prevEv').addEventListener('click',()=>{ const p = EVENTS.filter(e=>e.i<cur).pop(); if(p) setDay(p.i); });
+$('nextEv').addEventListener('click',()=>{ const n = EVENTS.find(e=>e.i>cur); if(n) setDay(n.i); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft') setDay(Math.max(0,cur-1));
+  if(e.key==='ArrowRight') setDay(Math.min(NDAYS-1,cur+1));
+});
+
+/* ---- §5 methodology, §6 references ---- */
+
+setDay(cur);
+</script>
+</body>
+</html>

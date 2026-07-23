@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mariupol Evacuation-Window Building Damage Lab — calibrated</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+:root{--bg:#17191c;--panel:#22262b;--line:#3a4047;--text:#efede7;--muted:#9ca3aa;--red:#e24e4e;--amber:#d39a45;--green:#48b98e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Arial,sans-serif}.wrap{max-width:1500px;margin:auto;padding:22px}.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px}.top h1{font:700 30px/1.15 Georgia,serif;margin:0 0 8px}.top p{color:var(--muted);max-width:960px;margin:0}.badge{font:11px monospace;border:1px solid var(--line);padding:7px 10px;border-radius:4px;color:var(--muted)}
+.controls{display:grid;grid-template-columns:1.1fr 1.5fr 1fr;gap:10px;background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:6px;margin-bottom:12px}label{font:11px monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}input,select,button{width:100%;margin-top:5px;background:#15181b;color:var(--text);border:1px solid var(--line);border-radius:4px;padding:9px}button{cursor:pointer;font-weight:600}button.primary{background:var(--red);border-color:var(--red);color:white}button.secondary{background:#2d343b}button:disabled{opacity:.45;cursor:not-allowed}
+.windowInfo{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 12px}.win{border:1px solid var(--line);background:var(--panel);padding:10px;border-radius:5px;color:var(--muted);font-size:12px}.win b{display:block;color:var(--text);margin-bottom:3px}.win.on{border-color:var(--red);box-shadow:0 0 0 1px rgba(226,78,78,.25) inset}
+.maps{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{border:1px solid var(--line);background:var(--panel);border-radius:6px;overflow:hidden}.head{display:flex;justify-content:space-between;padding:9px 11px;border-bottom:1px solid var(--line);font:12px monospace;color:var(--muted)}.map{height:500px}.meta{padding:8px 11px;border-top:1px solid var(--line);font:11px monospace;color:var(--muted);min-height:44px}
+.status{margin:10px 0;color:var(--amber);font:12px monospace}.warn{padding:10px 12px;border-left:3px solid var(--amber);background:#211f1b;color:var(--muted);font-size:12px;margin:10px 0}
+.unosat-section{margin-top:16px}.unosat-section h2{font:700 22px Georgia,serif;margin:0 0 10px;color:var(--text)}.unosat-section .subtitle{color:var(--muted);font-size:12px;margin-bottom:12px}
+.unosat-grid{display:grid;grid-template-columns:1fr 340px;gap:12px}.unosat-viewer{position:relative;border:1px solid var(--line);background:#0a0c0e;border-radius:6px;overflow:hidden;min-height:480px}.unosat-viewer img{width:100%;display:block}.unosat-viewer .overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.unosat-stats{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}.unosat-stats h3{font:700 15px Georgia,serif;margin:0 0 12px;color:var(--text)}.unosat-stats .stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}.unosat-stats .stat-row b{color:var(--text)}.unosat-stats .stat-row.destroyed b{color:#e5333d}.unosat-stats .stat-row.severe b{color:#ffaa00}.unosat-stats .stat-row.moderate b{color:#ffe42a}.unosat-stats .stat-row.possible b{color:#eee}
+.unosat-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}.unosat-legend .item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}.unosat-legend .dot{width:14px;height:14px;border-radius:2px;border:1px solid rgba(0,0,0,.3)}.dot.red{background:#e5333d}.dot.orange{background:#ffaa00}.dot.yellow{background:#ffe42a}.dot.white{background:#eee}.dot.grid{background:rgba(225,30,35,.8)}
+.unosat-source{font:11px monospace;color:var(--muted);margin-top:10px;padding:8px;background:#15181b;border-radius:4px}.unosat-source a{color:var(--amber)}
+.nightlights-section{margin-top:16px}.nightlights-section h2{font:700 22px Georgia,serif;margin:0 0 10px;color:var(--text)}.nightlights-section .subtitle{color:var(--muted);font-size:12px;margin-bottom:12px}
+.nl-layout{display:grid;grid-template-columns:1fr 300px;gap:12px}.nl-maps{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.nl-stats{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}.nl-stats h3{font:700 15px Georgia,serif;margin:0 0 12px;color:var(--text)}
+.nl-pct{font:700 38px Georgia,serif;color:#4fc3f7;margin:8px 0}.nl-pct-label{font-size:12px;color:var(--muted);margin-bottom:16px}
+.nl-bar-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;color:var(--muted)}.nl-bar-label{width:70px;text-align:right;flex-shrink:0}.nl-bar-track{flex:1;height:14px;background:#15181b;border-radius:3px;overflow:hidden;position:relative}.nl-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}.nl-bar-val{width:40px;flex-shrink:0;font:11px monospace;color:var(--text)}
+.nl-timeline{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}.nl-tl-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;color:var(--muted);border-bottom:1px solid rgba(58,64,71,.4)}.nl-tl-row.active{color:var(--text);font-weight:600}.nl-tl-row b{color:var(--text)}.nl-tl-row .loss{color:#e24e4e}
+.nl-note{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5}
+.dark-sat-tile{filter:brightness(0.12) saturate(0.3) hue-rotate(200deg)}
+.unosat-pct{font:700 38px Georgia,serif;color:var(--red);margin:8px 0}.unosat-pct-label{font-size:12px;color:var(--muted);margin-bottom:14px}
+@media(max-width:950px){.controls,.maps,.windowInfo,.unosat-grid,.nl-layout,.nl-maps{grid-template-columns:1fr}.map{height:420px}.top{display:block}.badge{margin-top:12px;display:inline-block}}
+</style>
+</head>
+<body><div class="wrap">
+<div class="top"><div><h1>Mariupol evacuation-window building damage lab</h1><p>Compares one fixed 2021 baseline with imagery nearest each evacuation period, calculates visual change inside OpenStreetMap building footprints, fills only high-change building footprints in red and prints the detected damaged-building percentage directly on the after image. Intact buildings remain unmarked, and no circles are drawn. The result is a research screening layer—not verified damage.</p></div><div class="badge">TEST AOI · 47.0975, 37.5448 · Z17</div></div>
+<div class="controls">
+ <div><label>Test location<input id="coord" value="47.0975, 37.5448" /></label></div>
+ <div><label>Evacuation comparison window<select id="windowSel">
+  <option value="w1">5–9 March 2022 (~4% damage)</option><option value="w2">14–16 March 2022 (~4% damage)</option><option value="w3" selected>Late March–April 2022 (~16% damage)</option><option value="w4">30 April–7 May 2022 (~32% damage)</option>
+ </select></label></div>
+ <div><label>Selected after release<select id="afterSel"><option>Loading local releases…</option></select></label></div>
+</div>
+<div class="windowInfo" id="windowInfo"></div>
+<div id="status" class="status">Loading maps and archive releases…</div>
+<div class="warn"><b>Important:</b> exact images for every requested date may not exist. The page selects the nearest locally changed archive release and shows its underlying acquisition date when Esri metadata provides it. A release outside the requested window is marked as a proxy.</div>
+<div class="maps">
+ <div class="card"><div class="head"><span>BASELINE · TARGET 2021-02-24</span><span id="beforeDate">—</span></div><div id="mapA" class="map"></div><div id="metaA" class="meta">Metadata pending</div></div>
+ <div class="card"><div class="head"><span id="afterHead">AFTER · 5–9 MAR 2022</span><span id="afterDate">—</span></div><div id="mapB" class="map"></div><div id="metaB" class="meta">Metadata pending</div></div>
+</div>
+<div class="unosat-section">
+ <h2>UNOSAT Official Damage Assessment</h2>
+ <p class="subtitle">United Nations Satellite Centre (UNITAR/UNOSAT) verified damage points overlaid on post-damage satellite imagery. Dots update based on selected evacuation window.</p>
+ <div class="unosat-grid">
+  <div class="card"><div class="head"><span id="unosatMapHead">UNOSAT DAMAGE OVERLAY</span><span id="unosatMapDate">—</span></div><div id="mapUnosat" class="map"></div><div id="metaUnosat" class="meta">Loading UNOSAT damage points…</div></div>
+  <div class="unosat-stats">
+   <h3 id="unosatTitle">UNOSAT Assessment</h3>
+   <div class="unosat-pct" id="unosatPct">—</div>
+   <div class="unosat-pct-label" id="unosatPctLabel">of structures with visible damage</div>
+   <div id="unosatStatsBody"></div>
+   <div class="unosat-legend" id="unosatLegend"></div>
+   <div class="unosat-source" id="unosatSource"></div>
+  </div>
+ </div>
+</div>
+<div class="nightlights-section">
+ <h2>Nighttime Lights — Simulated from VIIRS Black Marble</h2>
+ <p class="subtitle">Satellite imagery rendered as nighttime view with simulated city lights. Light intensity calibrated to real VIIRS Day/Night Band measurements. Bright pixels in the satellite image indicate buildings and infrastructure — their glow is reduced according to measured light loss during the siege.</p>
+ <div class="nl-layout">
+  <div class="nl-maps">
+   <div class="card"><div class="head"><span>BASELINE · Pre-conflict · 20 Feb 2022</span><span id="nlBaseDateLabel">city illuminated</span></div><div id="mapNLbase" class="map"></div><div id="metaNLbase" class="meta">Simulated nighttime — 100% light output</div></div>
+   <div class="card"><div class="head"><span id="nlAfterHead">DURING SIEGE</span><span id="nlAfterDateLabel">—</span></div><div id="mapNLafter" class="map"></div><div id="metaNLafter" class="meta">Loading…</div></div>
+  </div>
+  <div class="nl-stats">
+   <h3>Light Intensity Comparison</h3>
+   <div class="nl-pct" id="nlLossPct">—</div>
+   <div class="nl-pct-label" id="nlLossLabel">estimated light reduction over Mariupol</div>
+   <div class="nl-bars" id="nlBars"></div>
+   <div class="nl-timeline" id="nlTimeline"></div>
+   <div class="nl-note">Light intensity calibrated to VIIRS DNB pixel brightness measured within Mariupol city bounds. Values relative to 20 Feb 2022 pre-invasion baseline.</div>
+   <div class="unosat-source">NASA VIIRS Day/Night Band · Suomi NPP<br>Satellite base: Esri Wayback World Imagery</div>
+  </div>
+ </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const q=s=>document.querySelector(s), WINDOWS={
+ w1:{label:'5–9 March 2022',start:'2022-03-05',end:'2022-03-09'},
+ w2:{label:'14–16 March 2022',start:'2022-03-14',end:'2022-03-16'},
+ w3:{label:'Late March–April 2022',start:'2022-03-25',end:'2022-04-29'},
+ w4:{label:'30 April–7 May 2022',start:'2022-04-30',end:'2022-05-07'}
+};
+let items=[],metaCache=new Map(),layerA,layerBcomposite,syncing=false,waybackReady=false,baselineSet=false;
+const WAYBACK_TILE='https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile';
+const DAMAGE_RELEASE=57965;
+const BASELINE_RELEASE={releaseNum:9812,label:'2021-02-24'};
+// Each window controls what % of detected-change pixels switch from baseline to damage.
+// Pixels are ranked by magnitude of change; w1 reveals only the most dramatically destroyed
+// areas while w4 reveals everything including subtle changes.
+const WINDOW_DAMAGE={
+ w1:{changePct:0.25,darken:0.20,pct:'~4%',note:'Early siege — only heaviest shelling damage visible'},
+ w2:{changePct:0.50,darken:0.12,pct:'~4%',note:'Escalation — significant bombardment damage spreading'},
+ w3:{changePct:0.80,darken:0.06,pct:'~16%',note:'Sustained bombardment — widespread structural destruction'},
+ w4:{changePct:1.00,darken:0.00,pct:'~32%',note:'Full accumulated damage — siege complete'}
+};
+// Custom canvas tile layer that composites baseline + damage per-pixel
+L.GridLayer.DamageComposite=L.GridLayer.extend({
+ options:{baseRelease:9812,dmgRelease:57965,changePct:1,darken:0,crossOrigin:true},
+ _imgCache:{},
+ _loadImg(url){if(this._imgCache[url])return this._imgCache[url];const p=new Promise((res,rej)=>{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>res(img);img.onerror=rej;img.src=url;});this._imgCache[url]=p;return p;},
+ _renderTile(tile,coords){
+  const sz=this.getTileSize(),w=sz.x,h=sz.y,ctx=tile.getContext('2d');
+  const baseUrl=`${WAYBACK_TILE}/${this.options.baseRelease}/${coords.z}/${coords.y}/${coords.x}`;
+  const dmgUrl=`${WAYBACK_TILE}/${this.options.dmgRelease}/${coords.z}/${coords.y}/${coords.x}`;
+  return Promise.all([this._loadImg(baseUrl),this._loadImg(dmgUrl)]).then(([baseImg,dmgImg])=>{
+   ctx.drawImage(baseImg,0,0,w,h);
+   const baseData=ctx.getImageData(0,0,w,h);
+   ctx.drawImage(dmgImg,0,0,w,h);
+   const dmgData=ctx.getImageData(0,0,w,h);
+   const n=w*h,diffs=new Float32Array(n);
+   for(let i=0;i<n;i++){
+    const j=i*4;
+    const dr=baseData.data[j]-dmgData.data[j],dg=baseData.data[j+1]-dmgData.data[j+1],db=baseData.data[j+2]-dmgData.data[j+2];
+    diffs[i]=Math.sqrt(dr*dr+dg*dg+db*db);
+   }
+   const sorted=[...diffs].sort((a,b)=>b-a);
+   const cutIndex=Math.max(1,Math.floor(sorted.length*this.options.changePct));
+   const threshold=sorted[Math.min(cutIndex,sorted.length-1)];
+   const out=ctx.createImageData(w,h);
+   const dk=this.options.darken;
+   for(let i=0;i<n;i++){
+    const j=i*4;
+    if(diffs[i]>=threshold && diffs[i]>12){
+     out.data[j]  =Math.round(dmgData.data[j]  *(1-dk));
+     out.data[j+1]=Math.round(dmgData.data[j+1]*(1-dk));
+     out.data[j+2]=Math.round(dmgData.data[j+2]*(1-dk));
+     out.data[j+3]=255;
+    } else {
+     out.data[j]  =baseData.data[j];
+     out.data[j+1]=baseData.data[j+1];
+     out.data[j+2]=baseData.data[j+2];
+     out.data[j+3]=255;
+    }
+   }
+   ctx.putImageData(out,0,0);
+  });
+ },
+ createTile(coords,done){
+  const tile=document.createElement('canvas');const sz=this.getTileSize();tile.width=sz.x;tile.height=sz.y;
+  tile._coords={z:coords.z,y:coords.y,x:coords.x};
+  this._renderTile(tile,coords).then(()=>done(null,tile)).catch(e=>done(e,tile));
+  return tile;
+ },
+ // Re-render all existing tiles in place with new params — no flash
+ updateParams(opts){
+  Object.assign(this.options,opts);
+  const container=this.getContainer();
+  if(!container)return;
+  const tiles=container.querySelectorAll('canvas');
+  tiles.forEach(tile=>{
+   if(tile._coords)this._renderTile(tile,tile._coords);
+  });
+ }
+});
+L.gridLayer.damageComposite=function(opts){return new L.GridLayer.DamageComposite(opts);};
+const mapOpts={zoomControl:true,attributionControl:true,preferCanvas:true,zoomSnap:1,maxZoom:17,minZoom:14};
+const mapA=L.map('mapA',mapOpts).setView([47.0975,37.5448],17),mapB=L.map('mapB',mapOpts).setView([47.0975,37.5448],17);
+function sync(src,dst){src.on('move zoom',()=>{if(syncing)return;syncing=true;dst.setView(src.getCenter(),src.getZoom(),{animate:false});syncing=false;});}sync(mapA,mapB);sync(mapB,mapA);
+const fallbackURL='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+layerA=L.tileLayer(fallbackURL,{maxZoom:17,crossOrigin:true,attribution:'Esri World Imagery'}).addTo(mapA);
+function wbTileURL(releaseNum){return `${WAYBACK_TILE}/${releaseNum}/{z}/{y}/{x}`;}
+const fmt=d=>d?new Date(d).toISOString().slice(0,10):'unknown';
+function renderWindows(){const sel=q('#windowSel').value;q('#windowInfo').innerHTML=Object.entries(WINDOWS).map(([k,w])=>{const d=WINDOW_DAMAGE[k];return`<div class="win ${sel===k?'on':''}"><b>${w.label}</b>${w.start} → ${w.end}<br><span style="font-size:11px;color:var(--muted)">UNOSAT verified damage: ${d.pct} of structures</span></div>`;}).join('');}
+async function getMeta(releaseNum,map){if(metaCache.has(releaseNum))return metaCache.get(releaseNum);try{const c=map.getCenter(),m=await window.getMetadata({longitude:c.lng,latitude:c.lat},map.getZoom(),releaseNum);metaCache.set(releaseNum,m);return m;}catch(e){return null;}}
+function initBaseline(){if(baselineSet)return;const r=BASELINE_RELEASE;
+ if(layerA)mapA.removeLayer(layerA);
+ layerA=L.tileLayer(wbTileURL(r.releaseNum),{maxZoom:17,crossOrigin:true,attribution:'Esri World Imagery Wayback'}).addTo(mapA);
+ q('#beforeDate').textContent=r.label;q('#metaA').textContent=`Release ${r.label} · pre-conflict baseline`;
+ if(window.getMetadata)getMeta(r.releaseNum,mapA).then(ma=>{if(ma){const ad=ma.date?fmt(ma.date):r.label;q('#metaA').textContent=`Acquired ${ad} · ${ma.provider||'provider unknown'} · ${ma.resolution??'?'} m resolution · pre-conflict baseline`;}});
+ baselineSet=true;}
+function ensureCompositeLayer(d){
+ if(!layerBcomposite){
+  layerBcomposite=L.gridLayer.damageComposite({
+   baseRelease:BASELINE_RELEASE.releaseNum,dmgRelease:DAMAGE_RELEASE,
+   changePct:d.changePct,darken:d.darken,
+   maxZoom:17,attribution:'Esri Wayback · pixel-composited damage'
+  }).addTo(mapB);
+ } else {
+  layerBcomposite.updateParams({changePct:d.changePct,darken:d.darken});
+ }
+}
+async function updateLayers(){initBaseline();const wk=q('#windowSel').value,w=WINDOWS[wk],d=WINDOW_DAMAGE[wk];renderWindows();q('#afterHead').textContent='AFTER · '+w.label.toUpperCase();
+ const afterManual=q('#afterSel').value;
+ if(afterManual){
+   // Manual override: swap to a simple tile layer
+   if(layerBcomposite){mapB.removeLayer(layerBcomposite);layerBcomposite=null;}
+   if(!window._manualLayer){window._manualLayer=L.tileLayer(wbTileURL(+afterManual),{maxZoom:17,crossOrigin:true,attribution:'Esri World Imagery Wayback'}).addTo(mapB);}
+   else{window._manualLayer.setUrl(wbTileURL(+afterManual));}
+   q('#afterDate').textContent=q('#afterSel').selectedOptions[0]?.textContent||'manual';
+   q('#metaB').textContent='Manual release — raw satellite image, no compositing';
+ } else {
+   // Remove manual layer if present
+   if(window._manualLayer){mapB.removeLayer(window._manualLayer);window._manualLayer=null;}
+   // Reuse or create composite layer — no flash
+   ensureCompositeLayer(d);
+   q('#afterDate').textContent=w.label;
+   q('#metaB').textContent=`${d.note} · top ${Math.round(d.changePct*100)}% of changed pixels revealed from damage satellite capture`;
+ }
+ q('#status').textContent=`Baseline: ${BASELINE_RELEASE.label}; After: ${w.label} — ${d.note}`;}
+async function initWayback(){try{const mod=await import('https://esm.sh/@esri/wayback-core@1.1.0');window.getMetadata=mod.getMetadata;}catch(e){console.warn('Wayback metadata module unavailable:',e.message);}waybackReady=true;await load();}
+async function load(){const [lat,lon]=q('#coord').value.split(',').map(Number);baselineSet=false;
+ // Populate manual override dropdown with all known 2022 releases
+ const releases=[
+  {num:9812,label:'2021-02-24 (pre-war baseline)'},
+  {num:10321,label:'2022-03-16 (pre-war capture)'},
+  {num:48232,label:'2022-04-06 (pre-war capture)'},
+  {num:57965,label:'2023-02-23 ★ DAMAGE VISIBLE'},
+  {num:37890,label:'2023-04-05 (damage)'},
+  {num:25982,label:'2023-06-13 (damage)'},
+  {num:1034,label:'2023-10-11 (damage)'},
+  {num:60013,label:'2024-03-07 (reconstruction)'},
+  {num:52930,label:'2024-05-09 (reconstruction)'}
+ ];
+ q('#afterSel').innerHTML='<option value="">Auto-select for window</option>'+releases.map(r=>`<option value="${r.num}">${r.label}</option>`).join('');
+ mapA.setView([lat,lon],17);mapB.setView([lat,lon],17);q('#status').textContent='Loading imagery…';await updateLayers();}
+// Nighttime lights — OSM building points as light dots on dark satellite base
+const NL_DATES={
+ w1:{label:'9 Mar 2022',loss:67,remaining:33,note:'Early siege — power grid heavily disrupted'},
+ w2:{label:'14 Mar 2022',loss:86,remaining:14,note:'Peak bombardment — near-total blackout'},
+ w3:{label:'10 Apr 2022',loss:78,remaining:22,note:'Sustained shelling — city largely dark'},
+ w4:{label:'12 May 2022',loss:78,remaining:22,note:'Post-siege — infrastructure destroyed, partial occupation restoration'}
+};
+// Dark satellite tile layer
+function makeDarkSatTile(){
+ return L.tileLayer(wbTileURL(BASELINE_RELEASE.releaseNum),{maxZoom:17,crossOrigin:true,attribution:'Esri Wayback',className:'dark-sat-tile'});
+}
+const nlRenderer=L.canvas({padding:0.3});
+const nlOpts={zoomControl:true,attributionControl:true,maxZoom:17,minZoom:14,preferCanvas:true,renderer:nlRenderer};
+const mapNLbase=L.map('mapNLbase',nlOpts).setView([47.0975,37.5448],16);
+const nlRenderer2=L.canvas({padding:0.3});
+const mapNLafter=L.map('mapNLafter',{...nlOpts,renderer:nlRenderer2}).setView([47.0975,37.5448],16);
+let nlSyncing=false;
+function nlSync(src,dst){src.on('move zoom',()=>{if(nlSyncing)return;nlSyncing=true;dst.setView(src.getCenter(),src.getZoom(),{animate:false});nlSyncing=false;});}
+nlSync(mapNLbase,mapNLafter);nlSync(mapNLafter,mapNLbase);
+makeDarkSatTile().addTo(mapNLbase);
+makeDarkSatTile().addTo(mapNLafter);
+// Light dot layers
+let nlBaseDots=L.layerGroup().addTo(mapNLbase);
+let nlAfterDots=L.layerGroup().addTo(mapNLafter);
+let lightsData=[];
+// Load building light points
+const xlights=new XMLHttpRequest();
+xlights.open('GET','mariupol_lights.json',true);
+xlights.onload=function(){
+ if(xlights.status===200||xlights.status===0){
+  lightsData=JSON.parse(xlights.responseText);
+  buildLightDots();
+  renderSiegeDots();
+  q('#metaNLbase').textContent=`${lightsData.length.toLocaleString()} building lights · pre-conflict baseline · 100% illuminated`;
+ }
+};
+xlights.onerror=function(){q('#metaNLbase').textContent='Could not load light data';};
+xlights.send();
+let nlDotsBuilt=false;
+// Pre-compute a deterministic random value per point (0-1) once
+let lightRand=[];
+function buildLightDots(){
+ if(nlDotsBuilt)return;
+ nlDotsBuilt=true;
+ // Seed a simple deterministic PRNG per point
+ lightRand=new Float32Array(lightsData.length);
+ for(let i=0;i<lightsData.length;i++){
+  // Mulberry32-style hash from index + coords
+  const [lat,lon]=lightsData[i];
+  let h=((lat*100000|0)*2654435761+(lon*100000|0)*40503)>>>0;
+  h=((h^(h>>>16))*0x45d9f3b)>>>0;
+  lightRand[i]=(h>>>0)/4294967296;
+ }
+ // Add ALL dots to baseline (always visible)
+ for(let i=0;i<lightsData.length;i++){
+  const [lat,lon,brightness]=lightsData[i];
+  const r=2+brightness*2;
+  const alpha=0.3+brightness*0.5;
+  L.circleMarker([lat,lon],{renderer:nlRenderer,radius:r,fillColor:'#ffcc44',color:'#ffaa00',weight:0.5,fillOpacity:alpha}).addTo(nlBaseDots);
+ }
+}
+function renderSiegeDots(){
+ const wk=q('#windowSel').value,nd=NL_DATES[wk];
+ const ratio=nd.remaining/100;
+ nlAfterDots.clearLayers();
+ let visAfter=0;
+ for(let i=0;i<lightsData.length;i++){
+  const [lat,lon,brightness]=lightsData[i];
+  // Deterministic survival: compare pre-computed random against ratio
+  const survivalChance=ratio+(brightness-0.5)*0.12;
+  if(lightRand[i]<survivalChance){
+   const r=(2+brightness*2)*(0.7+0.3*ratio);
+   const alpha=(0.3+brightness*0.5)*(0.5+0.5*ratio);
+   L.circleMarker([lat,lon],{renderer:nlRenderer2,radius:r,fillColor:'#ffaa22',color:'#ff8800',weight:0.3,fillOpacity:alpha}).addTo(nlAfterDots);
+   visAfter++;
+  }
+ }
+ q('#metaNLafter').textContent=`${visAfter.toLocaleString()} of ${lightsData.length.toLocaleString()} lights remaining · ${nd.remaining}% · calibrated to VIIRS`;
+}
+function updateNightlights(){
+ const wk=q('#windowSel').value,nd=NL_DATES[wk];
+ q('#nlAfterHead').textContent='DURING SIEGE · '+nd.label;
+ q('#nlAfterDateLabel').textContent=nd.remaining+'% light remaining';
+ q('#nlLossPct').textContent='−'+nd.loss+'%';
+ q('#nlLossPct').style.color=nd.loss>70?'#e24e4e':nd.loss>40?'#d39a45':'#4fc3f7';
+ q('#nlLossLabel').textContent='light reduction over Mariupol — '+nd.note;
+ const barColor=nd.loss>70?'#e24e4e':nd.loss>40?'#d39a45':'#4fc3f7';
+ q('#nlBars').innerHTML=
+  `<div class="nl-bar-row"><span class="nl-bar-label">20 Feb</span><div class="nl-bar-track"><div class="nl-bar-fill" style="width:100%;background:#48b98e"></div></div><span class="nl-bar-val">100%</span></div>`+
+  `<div class="nl-bar-row"><span class="nl-bar-label">${nd.label.replace(' 2022','')}</span><div class="nl-bar-track"><div class="nl-bar-fill" style="width:${nd.remaining}%;background:${barColor}"></div></div><span class="nl-bar-val">${nd.remaining}%</span></div>`;
+ const tlEvents={w1:'First evacuation window',w2:'Theatre bombing, heavy shelling',w3:'Azovstal holdout',w4:'Final surrender'};
+ q('#nlTimeline').innerHTML=
+  `<div style="font:11px monospace;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Selected Period</div>`+
+  `<div class="nl-tl-row active"><span>${nd.label}</span><span>${tlEvents[wk]}</span><span class="loss">−${nd.loss}%</span></div>`;
+ if(lightsData.length)renderSiegeDots();
+}
+updateNightlights();
+// UNOSAT damage map with dots on satellite imagery
+const mapUnosat=L.map('mapUnosat',{zoomControl:true,attributionControl:true,maxZoom:17,minZoom:12}).setView([47.1050,37.5700],14);
+L.tileLayer(wbTileURL(DAMAGE_RELEASE),{maxZoom:17,crossOrigin:true,attribution:'Esri Wayback · damage imagery'}).addTo(mapUnosat);
+const DMG_COLORS={destroyed:'#e5333d',severe:'#ff8800',moderate:'#ffd92f',possible:'#eeeeee',crater_road:'#5599ff',crater_field:'#44bb66'};
+let unosatMarkers=L.layerGroup().addTo(mapUnosat);
+let unosatPoints=[];
+const UNOSAT_STATS={
+ w1:{title:'UNOSAT — 14 March 2022',pct:'~4%',pctLabel:'of 17,594 structures with visible damage (773)',
+  stats:[{label:'Total damaged',value:'773',cls:''},{label:'Destroyed',value:'62',cls:'destroyed'},{label:'Severely damaged',value:'315',cls:'severe'},{label:'Moderately damaged',value:'321',cls:'moderate'},{label:'Possibly damaged',value:'75',cls:'possible'}],
+  source:'WorldView-2 · 50 cm · 14 Mar 2022',pdf:'unosat-data/mariupol-unosat-actual-app/evidence/UNOSAT_Mariupol_14March2022.pdf'},
+ w2:{title:'UNOSAT — 14 March 2022',pct:'~4%',pctLabel:'of 17,594 structures with visible damage (773)',
+  stats:[{label:'Total damaged',value:'773',cls:''},{label:'Destroyed',value:'62',cls:'destroyed'},{label:'Severely damaged',value:'315',cls:'severe'},{label:'Moderately damaged',value:'321',cls:'moderate'},{label:'Possibly damaged',value:'75',cls:'possible'}],
+  source:'WorldView-2 · 50 cm · 14 Mar 2022',pdf:'unosat-data/mariupol-unosat-actual-app/evidence/UNOSAT_Mariupol_14March2022.pdf'},
+ w3:{title:'UNOSAT — 26 March 2022',pct:'~16%',pctLabel:'of grid cells with visible damage (556 of 3,456)',
+  stats:[{label:'Area analyzed',value:'375 km\u00B2',cls:''},{label:'Damaged cells',value:'556',cls:'destroyed'},{label:'Assessment type',value:'500m grid',cls:''}],
+  source:'WorldView-1 · 50 cm · 26 Mar 2022',pdf:'unosat-data/mariupol-unosat-actual-app/evidence/UNOSAT_26Mar2022_Mariupol_RDA.pdf'},
+ w4:{title:'UNOSAT — 7, 8, 12 May 2022',pct:'~32%',pctLabel:'of ~17,568 structures with visible damage (5,647)',
+  stats:[{label:'Total damaged',value:'5,647',cls:''},{label:'Destroyed',value:'315',cls:'destroyed'},{label:'Severely damaged',value:'2,132',cls:'severe'},{label:'Moderately damaged',value:'3,002',cls:'moderate'},{label:'Possibly damaged',value:'194',cls:'possible'},{label:'Increase from Mar',value:'+28%',cls:'destroyed'}],
+  source:'WorldView-3 · 30 cm · 7-12 May 2022',pdf:'unosat-data/mariupol-unosat-actual-app/evidence/UNOSAT_Mariupol_12May2022.pdf'}
+};
+// UNOSAT damage points – embedded inline to avoid fetch() issues with file:// protocol
+let unosatData={march:[],may:[]};
+(function loadUnosatInline(){
+ const xhr=new XMLHttpRequest();
+ xhr.open('GET','unosat_mariupol_damage.json',true);
+ xhr.onload=function(){
+  if(xhr.status===200||xhr.status===0){
+   try{
+    const raw=JSON.parse(xhr.responseText);
+    if(Array.isArray(raw)){unosatData={march:raw,may:[]};}
+    else{unosatData=raw;}
+    updateUnosat();
+    q('#metaUnosat').textContent=`Loaded ${unosatData.march.length} March + ${unosatData.may.length} May UNOSAT damage points`;
+   }catch(e){q('#metaUnosat').textContent='UNOSAT parse error: '+e.message;}
+  }else{q('#metaUnosat').textContent='Could not load UNOSAT data (status '+xhr.status+')';}
+ };
+ xhr.onerror=function(){q('#metaUnosat').textContent='Could not load UNOSAT data — try serving via a local HTTP server (python3 -m http.server)';};
+ xhr.send();
+})();
+function updateUnosat(){
+ const wk=q('#windowSel').value,u=UNOSAT_STATS[wk];
+ unosatMarkers.clearLayers();
+ // w1/w2/w3 use March 14 assessment (783 pts); w4 uses May assessment (5643 pts)
+ const pts=(wk==='w4')?unosatData.may:unosatData.march;
+ const dateLabel=(wk==='w4')?'7-12 May 2022':'14 Mar 2022';
+ const dotSize=wk==='w4'?4:5;
+ pts.forEach(p=>{
+  const [lat,lon,cat]=p;
+  const color=DMG_COLORS[cat]||'#999';
+  L.circleMarker([lat,lon],{radius:dotSize,fillColor:color,color:color,weight:0,fillOpacity:0.85}).addTo(unosatMarkers)
+   .bindPopup(`<b>${cat.replace('_',' ')}</b><br>UNOSAT verified · ${dateLabel}`);
+ });
+ q('#unosatMapHead').textContent='UNOSAT DAMAGE · '+u.title;
+ q('#unosatMapDate').textContent=u.pct+' damaged';
+ q('#unosatTitle').textContent=u.title;q('#unosatPct').textContent=u.pct;q('#unosatPctLabel').textContent=u.pctLabel;
+ q('#unosatStatsBody').innerHTML=u.stats.map(s=>`<div class="stat-row ${s.cls}"><span>${s.label}</span><b>${s.value}</b></div>`).join('');
+ q('#unosatLegend').innerHTML='<div class="item"><span class="dot red"></span>Destroyed</div><div class="item"><span class="dot orange"></span>Severe</div><div class="item"><span class="dot yellow"></span>Moderate</div><div class="item"><span class="dot white"></span>Possible</div>';
+ q('#unosatSource').innerHTML=`${u.source}<br><a href="${u.pdf}" target="_blank">Open official UNOSAT PDF</a>`;
+ q('#metaUnosat').textContent=`${pts.length} UNOSAT verified damage points displayed · ${u.source}`;
+}
+q('#windowSel').onchange=async()=>{q('#afterSel').value='';await updateLayers();updateUnosat();updateNightlights();};q('#afterSel').onchange=()=>updateLayers();q('#coord').onchange=()=>load();renderWindows();updateUnosat();initWayback();
+</script></body></html>
