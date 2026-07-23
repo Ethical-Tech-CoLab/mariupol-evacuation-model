@@ -1,7 +1,6 @@
 # Humanitarian Corridors Under Siege: Mariupol 2022
 
 **[Live site](https://ethical-tech-colab.github.io/mariupol-evacuation-model/)** ·
-**[Standalone severity model](https://ethical-tech-colab.github.io/mariupol-evacuation-model/severity-standalone.html)** ·
 **[Research report](Mariupol-Severity-Model-Paper.md)** (plain-language, non-technical)
 
 **Retrospective decision-support prototype for civilian evacuation under IHL · not operational guidance**
