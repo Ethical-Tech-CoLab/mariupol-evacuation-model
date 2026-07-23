@@ -1,6 +1,6 @@
 # Mariupol 2022 — Corridor Severity Model
 
-**[Live site](https://ethical-tech-colab.github.io/mariupol-evacuation-model/)** ·
+**[Live site]([https://ethical-tech-colab.github.io/mariupol-evacuation-model/](https://ethical-tech-colab.github.io/mariupol-evacuation-model/))** ·
 **[Research report](Mariupol-Severity-Model-Paper.md)** (plain-language, non-technical)
 
 **Retrospective decision-support prototype for civilian evacuation under IHL · not operational guidance**
