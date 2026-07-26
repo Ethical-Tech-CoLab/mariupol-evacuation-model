@@ -143,11 +143,54 @@ function setupFrame(id){
 setupFrame('severityFrame');
 setupFrame('feasibilityFrame');
 
-// Listen for conclusion updates from severity iframe
+// Unified conclusion: merges severity (Axis 1) + feasibility/evacuation (Axis 2)
+let _sevHTML = '', _feasData = null;
+function renderUnifiedConclusion(){
+  if(!_sevHTML) return; // need at least severity
+  const sec = document.getElementById('concSection');
+  const out = document.getElementById('concOut');
+  let html = _sevHTML; // severity conclusion paragraphs
+
+  if(_feasData){
+    const f = _feasData;
+    const c = f.corridor;
+    const corrOpen = f.window === 'w4';
+    html += `<p style="margin-top:18px"><span class="lede">Feasibility assessment (${f.windowLabel}).</span>
+      UNOSAT satellite analysis shows ${f.dmgPct} of assessed structures damaged; VIIRS Black Marble measurements indicate ${f.lightsPct}% of pre-invasion nighttime lights surviving.
+      Across ${f.zoneCount} identified emergency zones, an estimated ${f.totalPop.toLocaleString()} people remain exposed, of whom <b>${f.totalVuln.toLocaleString()} are vulnerable</b> — children, elderly, and persons with disabilities under GC IV arts. 14 and 17 special-protection categories.</p>`;
+
+    html += `<p>The highest-priority zone (${f.priority.name}) contains approximately ${f.priority.pop.toLocaleString()} people with ${f.priority.vuln.toLocaleString()} vulnerable (${f.priority.children} children, ${f.priority.elderly} elderly) in an area ${f.priority.dmgPct}% damaged and ${f.priority.darkPct}% dark.`;
+    if(f.bestRoute){
+      html += ` Dijkstra pathfinding through a 250 m damage-avoidance grid identifies a ${f.bestRoute.km} km route from Zone ${f.bestRoute.zone} to the western exit with ${f.bestRoute.dmg} damaged structures along the path${f.bestRoute.blocked?' and '+f.bestRoute.blocked+' blocked cells':''}.`;
+    }
+    html += `</p>`;
+
+    html += `<p><span class="lede">Corridor status: ${c.status}.</span> ${c.detail} `;
+    if(corrOpen){
+      html += `With the UN/ICRC-brokered mechanism operational, the modelled evacuation routes to Zaporizhzhia via Manhush–Berdyansk–Tokmak–Vasylivka are actionable. The ${f.totalVuln.toLocaleString()} vulnerable civilians in the identified zones represent the residual protection gap.`;
+    } else {
+      html += `The severity model indicates evacuation was warranted from mid-March; the ${f.totalVuln.toLocaleString()} vulnerable people identified in the emergency zones cannot reach safety through any organized mechanism. The routes computed by the model are feasible in principle — the constraint is not information or logistics but the absence of consent to a functioning corridor.`;
+    }
+    html += `</p>`;
+
+    if(f.window === 'w3'){
+      html += `<p>Russia's proposed corridors toward Bezimenne and Dokuchaievsk — directing civilians into occupied territory — were rejected by Ukraine under GC IV art. 49 (prohibition of forcible transfers). The agreed evacuation direction remains westward to Zaporizhzhia (Ukrainian-controlled), but no ceasefire or escort mechanism is in effect.</p>`;
+    }
+  }
+
+  out.innerHTML = html;
+  sec.style.display = '';
+}
+
 window.addEventListener('message', function(e){
-  if(e.data && e.data.type === 'conclusion'){
-    document.getElementById('concOut').innerHTML = e.data.html;
-    document.getElementById('concSection').style.display = '';
+  if(!e.data) return;
+  if(e.data.type === 'conclusion'){
+    _sevHTML = e.data.html;
+    renderUnifiedConclusion();
+  }
+  if(e.data.type === 'feasibility'){
+    _feasData = e.data.data;
+    renderUnifiedConclusion();
   }
 });
 </script>

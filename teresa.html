@@ -26,7 +26,18 @@
 .nl-note{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5}
 .dark-sat-tile{filter:brightness(0.12) saturate(0.3) hue-rotate(200deg)}
 .unosat-pct{font:700 38px Georgia,serif;color:var(--red);margin:8px 0}.unosat-pct-label{font-size:12px;color:var(--muted);margin-bottom:14px}
-@media(max-width:950px){.controls,.maps,.windowInfo,.unosat-grid,.nl-layout,.nl-maps{grid-template-columns:1fr}.map{height:420px}.top{display:block}.badge{margin-top:12px;display:inline-block}}
+.evac-section{margin-top:16px}.evac-section h2{font:700 22px Georgia,serif;margin:0 0 10px;color:var(--text)}.evac-section .subtitle{color:var(--muted);font-size:12px;margin-bottom:12px}
+.evac-layout{display:grid;grid-template-columns:1fr 340px;gap:12px}
+.evac-stats{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}.evac-stats h3{font:700 15px Georgia,serif;margin:0 0 12px;color:var(--text)}
+.evac-dist-row{padding:10px 0;border-bottom:1px solid var(--line)}.evac-dist-row:last-child{border-bottom:none}
+.evac-dist-name{font:600 13px Arial,sans-serif;color:var(--text);margin-bottom:4px;display:flex;justify-content:space-between}
+.evac-dist-name .risk-badge{font:700 11px monospace;padding:2px 7px;border-radius:3px;text-transform:uppercase}
+.evac-dist-bars{display:flex;gap:6px;margin-top:6px}.evac-dist-bar{flex:1}.evac-dist-bar-label{font:10px monospace;color:var(--muted);margin-bottom:2px}.evac-dist-bar-track{height:8px;background:#15181b;border-radius:3px;overflow:hidden}.evac-dist-bar-fill{height:100%;border-radius:3px;transition:width .6s}
+.evac-dist-pop{font:11px monospace;color:var(--muted);margin-top:4px}
+.evac-legend{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.evac-legend .item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}.evac-legend .swatch{width:12px;height:12px;border-radius:2px;border:1px solid rgba(255,255,255,.15)}
+.evac-route-box{margin-top:12px;padding:12px;background:#15181b;border-radius:4px;font-size:12px;color:var(--muted);line-height:1.6}.evac-route-box b{color:var(--text)}.evac-route-box .route-tag{display:inline-block;font:700 10px monospace;padding:2px 6px;border-radius:3px;margin-right:4px}
+@media(max-width:950px){.controls,.maps,.windowInfo,.unosat-grid,.nl-layout,.nl-maps,.evac-layout{grid-template-columns:1fr}.map{height:420px}.top{display:block}.badge{margin-top:12px;display:inline-block}}
 </style>
 </head>
 <body><div class="wrap">
@@ -76,6 +87,26 @@
    <div class="nl-timeline" id="nlTimeline"></div>
    <div class="nl-note">Light intensity calibrated to VIIRS DNB pixel brightness measured within Mariupol city bounds. Values relative to 20 Feb 2022 pre-invasion baseline.</div>
    <div class="unosat-source">NASA VIIRS Day/Night Band · Suomi NPP<br>Satellite base: Esri Wayback World Imagery</div>
+  </div>
+ </div>
+</div>
+<div class="evac-section">
+ <h2>Data-Driven Evacuation Analysis</h2>
+ <p class="subtitle">Evacuation routes from the most damaged and darkest zones of Mariupol to Zaporizhzhia (agreed safe destination). Origins are data-driven: cells with highest damage + lowest light survival + most buildings. Routes thread through least-damaged cells via Dijkstra pathfinding on a 250 m grid. Hover over a zone for details.</p>
+ <div class="evac-layout">
+  <div class="card evac-map-card" style="position:relative;overflow:hidden">
+   <div class="head"><span id="evacMapHead">EVACUATION ROUTE ANALYSIS</span><span id="evacMapDate">—</span></div>
+   <div style="position:relative">
+    <canvas id="evacSatCanvas" style="width:100%;display:block;background:#0e1014"></canvas>
+    <svg id="evacSvg" viewBox="0 0 900 650" style="position:absolute;top:0;left:0;width:100%;height:100%;font-family:sans-serif" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="evacTooltip" style="display:none;position:absolute;pointer-events:none;background:rgba(25,27,30,.94);border:1px solid #444;border-radius:5px;padding:10px 12px;font:11px monospace;color:#ccc;max-width:260px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.5)"></div>
+   </div>
+   <div id="metaEvac" class="meta">Loading…</div>
+  </div>
+  <div class="evac-stats">
+   <h3 id="evacStatsTitle">Evacuation Analysis</h3>
+   <div id="evacSummary"></div>
+   <div class="unosat-source">Population: OSM building centroids (45,544)<br>Damage: UNOSAT CE20220223UKR · Lights: VIIRS Black Marble</div>
   </div>
  </div>
 </div>
@@ -377,5 +408,570 @@ function updateUnosat(){
  q('#unosatSource').innerHTML=`${u.source}<br><a href="${u.pdf}" target="_blank">Open official UNOSAT PDF</a>`;
  q('#metaUnosat').textContent=`${pts.length} UNOSAT verified damage points displayed · ${u.source}`;
 }
-q('#windowSel').onchange=async()=>{q('#afterSel').value='';await updateLayers();updateUnosat();updateNightlights();};q('#afterSel').onchange=()=>updateLayers();q('#coord').onchange=()=>load();renderWindows();updateUnosat();initWayback();
+// ---- DATA-DRIVEN EVACUATION ANALYSIS ----
+const GRID={latMin:47.065,latMax:47.140,lonMin:37.480,lonMax:37.650,cellSize:0.00225,cellSizeLon:0.00335};
+const GRID_ROWS=Math.ceil((GRID.latMax-GRID.latMin)/GRID.cellSize);
+const GRID_COLS=Math.ceil((GRID.lonMax-GRID.lonMin)/GRID.cellSizeLon);
+
+// --- District-level demographics (Ukraine census / WorldPop estimates) ---
+// Mariupol pre-invasion ~431,000 across ~45,544 buildings
+// Districts defined by approximate longitude bands within the grid
+const DISTRICTS=[
+ {name:'East / Azovstal',lonMin:37.58,lonMax:99, // industrial + Soviet worker housing
+  occupancy:8, childPct:0.13, elderlyPct:0.18, disabledPct:0.04,
+  note:'Industrial zone, Azovstal & Illich steelworks, worker housing blocks'},
+ {name:'Central',lonMin:37.52,lonMax:37.58, // dense residential core, Drama Theater
+  occupancy:14, childPct:0.16, elderlyPct:0.22, disabledPct:0.05,
+  note:'Dense residential, Soviet-era apartment blocks, Drama Theater'},
+ {name:'West / Prymorskyi',lonMin:0,lonMax:37.52, // newer residential, coastal
+  occupancy:11, childPct:0.18, elderlyPct:0.15, disabledPct:0.03,
+  note:'Newer residential, mixed houses & apartments, coastal area'}
+];
+function getDistrict(lon){
+ for(const d of DISTRICTS) if(lon>=d.lonMin&&lon<d.lonMax) return d;
+ return DISTRICTS[1]; // default central
+}
+
+// --- Humanitarian corridor regimes per window ---
+const CORRIDORS={
+ w1:{status:'FAILED',statusCol:'#e24e4e',label:'Announced — all failed',
+  detail:'5–9 Mar: ceasefire announced for Mariupol → Zaporizhzhia corridor. Collapsed under shelling along route. ICRC unable to deploy. Zero civilians evacuated through organized mechanism.',
+  ihl:'GC IV art. 17 corridor envisaged but consent withdrawn in practice',
+  routeLabel:'Planned routes (corridor failed)',
+  routeNote:'These routes show where evacuation was agreed but collapsed. The path to Zaporizhzhia was negotiated — the constraint was not logistics but ceasefire violations along the route. Zones identify where the most vulnerable populations were already trapped.',
+  routeTag:'PLANNED'},
+ w2:{status:'SELF-EVAC ONLY',statusCol:'#d39a45',label:'No corridor — self-evacuation',
+  detail:'14–16 Mar: no ceasefire, no organized corridor. Civilians leaving in private vehicles at own risk via Manhush–Berdyansk. Filtration checkpoints reported. Thousands depart but under fire.',
+  ihl:'No art. 17 mechanism in effect; self-evacuation not a substitute for organized corridor',
+  routeLabel:'Self-evacuation routes (no organized corridor)',
+  routeNote:'Civilians departing in private vehicles without ceasefire or escort. These routes approximate the paths taken at own risk via Manhush–Berdyansk. Severity model already shows organized evacuation was warranted — no mechanism exists.',
+  routeTag:'UNPROTECTED'},
+ w3:{status:'SELF-EVAC / DISPUTED',statusCol:'#d39a45',label:'Self-evacuation + RU-proposed eastward corridors rejected',
+  detail:'Late Mar–Apr: Russia proposes corridors to Bezimenne/Dokuchaievsk (RU-controlled). Ukraine rejects as forced transfer (GC IV art. 49). Self-evacuation continues westward. ICRC convoy attempt 25 Mar fails.',
+  ihl:'RU-proposed route toward occupied territory — rejected under GC IV art. 49 (forced transfer prohibition)',
+  routeLabel:'Disputed corridor period (peak urgency)',
+  routeNote:'Model urgency peaks here. Agreed westward route to Zaporizhzhia has no functioning mechanism. Russia proposes eastward corridors to Bezimenne (rejected as forced transfer under GC IV art. 49). Zones show where vulnerable populations are most concentrated as damage and darkness escalate.',
+  routeTag:'HYPOTHETICAL'},
+ w4:{status:'ORGANIZED (UN/ICRC)',statusCol:'#48b98e',label:'First successful organized evacuation',
+  detail:'30 Apr–7 May: UN/ICRC-brokered evacuation from Azovstal. ~500 civilians extracted. First functioning art. 17 mechanism — 8 weeks after severity model shows it was warranted.',
+  ihl:'GC IV art. 17 mechanism operational. Arrived ~8 weeks after modelled severity crossed threshold',
+  routeLabel:'Actionable routes (corridor operational)',
+  routeNote:'First functioning organized evacuation. UN/ICRC-brokered mechanism along the agreed western route. Routes to Zaporizhzhia are now viable — but damage has reached ~32% and terrain is significantly degraded. The 8-week delay between model-warranted and actual evacuation is the central finding.',
+  routeTag:'OPERATIONAL'}
+};
+// Russian-proposed eastward route (rejected) — Mariupol → Bezimenne → Dokuchaievsk
+const ROUTE_EAST_RU=[[47.097,37.565],[47.100,37.62],[47.105,37.68],[47.110,37.72],[47.108,37.78],[47.100,37.85]];
+const BEZIMENNE=[47.100,37.85];
+
+const UNOSAT_DMG_PCT={w1:'~4%',w2:'~4%',w3:'~16%',w4:'~32%'};
+const UNOSAT_TOTAL={w1:773,w2:773,w3:556,w4:5647};
+const UNOSAT_STOCK={w1:17594,w2:17594,w3:3456,w4:17568};
+
+// Highway from western city edge to Zaporizhzhia (for extending routes beyond grid)
+const HIGHWAY_WEST=[[47.072,37.482],[47.055,37.400],[47.038,37.300],[47.035,37.250],[47.030,37.150],[47.042,37.010],[47.070,36.880],[47.120,36.760],[47.200,36.650],[47.320,36.520],[47.520,36.360],[47.620,36.280],[47.840,35.160]];
+const WAYPOINTS=[
+ {pos:[47.035,37.250],name:'Manhush'},
+ {pos:[47.070,36.880],name:'Berdyansk'},
+ {pos:[47.320,36.520],name:'Tokmak'},
+ {pos:[47.620,36.280],name:'Vasylivka',sub:'last RU checkpoint'}
+];
+const ZAPORIZHZHIA=[47.840,35.160];
+const EXIT_WEST=[47.072,37.482];
+
+// Route colors for emergency zones
+const ZONE_COLORS=['#e24e4e','#ff8800','#d39a45','#c27adb','#5bc0de'];
+
+function haversine(lat1,lon1,lat2,lon2){
+ const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+ const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+ return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function distToPolyline(lat,lon,path){
+ let minD=Infinity;
+ for(let i=0;i<path.length-1;i++){
+  const[y1,x1]=path[i],[y2,x2]=path[i+1];
+  const dx=x2-x1,dy=y2-y1;let t=((lon-x1)*dx+(lat-y1)*dy)/(dx*dx+dy*dy);
+  t=Math.max(0,Math.min(1,t));
+  minD=Math.min(minD,haversine(lat,lon,y1+t*dy,x1+t*dx));
+ }
+ return minD;
+}
+
+function buildGrid(dmgPts,lightPts,lightRatio){
+ const grid=[];
+ for(let r=0;r<GRID_ROWS;r++){grid[r]=[];for(let c=0;c<GRID_COLS;c++){
+  const lat=GRID.latMin+r*GRID.cellSize+GRID.cellSize/2;
+  const lon=GRID.lonMin+c*GRID.cellSizeLon+GRID.cellSizeLon/2;
+  const dist=getDistrict(lon);
+  grid[r][c]={row:r,col:c,lat,lon,
+   buildings:0,damaged:0,destroyed:0,severe:0,lightsOn:0,lightsTotal:0,passable:true,urgency:0,
+   district:dist,estPop:0,vulnPop:0,children:0,elderly:0,disabled:0};
+ }}
+ lightPts.forEach(p=>{
+  const r=Math.floor((p[0]-GRID.latMin)/GRID.cellSize),c=Math.floor((p[1]-GRID.lonMin)/GRID.cellSizeLon);
+  if(r>=0&&r<GRID_ROWS&&c>=0&&c<GRID_COLS){
+   grid[r][c].buildings++;grid[r][c].lightsTotal++;
+   const h=((p[0]*100000|0)*2654435761+(p[1]*100000|0)*40503)>>>0;
+   const rnd=(((h^(h>>>16))*0x45d9f3b)>>>0)/4294967296;
+   if(rnd<lightRatio+(p[2]-0.5)*0.12) grid[r][c].lightsOn++;
+  }
+ });
+ dmgPts.forEach(p=>{
+  const r=Math.floor((p[0]-GRID.latMin)/GRID.cellSize),c=Math.floor((p[1]-GRID.lonMin)/GRID.cellSizeLon);
+  if(r>=0&&r<GRID_ROWS&&c>=0&&c<GRID_COLS){grid[r][c].damaged++;if(p[2]==='destroyed')grid[r][c].destroyed++;if(p[2]==='severe'||p[2]==='severely_damaged')grid[r][c].severe++;}
+ });
+ // Score cells: population, vulnerability, passability, urgency
+ for(let r=0;r<GRID_ROWS;r++){for(let c=0;c<GRID_COLS;c++){
+  const cl=grid[r][c];if(!cl.buildings)continue;
+  const d=cl.district;
+  // Estimated population from building count × district occupancy
+  cl.estPop=Math.round(cl.buildings*d.occupancy);
+  cl.children=Math.round(cl.estPop*d.childPct);
+  cl.elderly=Math.round(cl.estPop*d.elderlyPct);
+  cl.disabled=Math.round(cl.estPop*d.disabledPct);
+  cl.vulnPop=cl.children+cl.elderly+cl.disabled;
+  // Vulnerability weight: Vw = 1 + 0.3*(children+elderly)/pop + 0.3*disabled/pop (GC IV)
+  const Vw=cl.estPop>0?1+0.3*(cl.children+cl.elderly)/cl.estPop+0.3*cl.disabled/cl.estPop:1;
+  const dmgRate=cl.damaged/cl.buildings;
+  const destrRate=(cl.destroyed+cl.severe)/cl.buildings;
+  if(dmgRate>0.40||destrRate>0.25)cl.passable=false;
+  const darkRatio=cl.lightsTotal>0?1-cl.lightsOn/cl.lightsTotal:0;
+  // Urgency: vulnerable population × danger factors
+  cl.urgency=cl.vulnPop*Vw*(dmgRate+darkRatio*0.5)*(1+destrRate);
+ }}
+ return grid;
+}
+
+function dijkstra(grid,sr,sc,er,ec){
+ const dist=Array.from({length:GRID_ROWS},()=>new Float64Array(GRID_COLS).fill(Infinity));
+ const prev=Array.from({length:GRID_ROWS},()=>new Array(GRID_COLS).fill(null));
+ const vis=Array.from({length:GRID_ROWS},()=>new Uint8Array(GRID_COLS));
+ dist[sr][sc]=0;const pq=[{r:sr,c:sc,d:0}];
+ const dirs=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+ while(pq.length){pq.sort((a,b)=>a.d-b.d);const{r,c,d}=pq.shift();if(vis[r][c])continue;vis[r][c]=1;if(r===er&&c===ec)break;
+  for(const[dr,dc]of dirs){const nr=r+dr,nc=c+dc;if(nr<0||nr>=GRID_ROWS||nc<0||nc>=GRID_COLS||vis[nr][nc])continue;
+   const cl=grid[nr][nc];let cost=Math.abs(dr)+Math.abs(dc)>1?1.414:1;
+   if(!cl.passable)cost+=50;
+   else if(cl.damaged>0)cost+=8*(cl.damaged/Math.max(1,cl.buildings));
+   if(cl.buildings>0&&cl.lightsOn<cl.buildings*0.3)cost+=3;
+   const nd=d+cost;if(nd<dist[nr][nc]){dist[nr][nc]=nd;prev[nr][nc]={r,c};pq.push({r:nr,c:nc,d:nd});}
+ }}
+ const path=[];let cr=er,cc=ec;while(prev[cr][cc]){path.unshift({r:cr,c:cc,lat:grid[cr][cc].lat,lon:grid[cr][cc].lon});const p=prev[cr][cc];cr=p.r;cc=p.c;}
+ path.unshift({r:sr,c:sc,lat:grid[sr][sc].lat,lon:grid[sr][sc].lon});
+ return{path,cost:dist[er][ec]};
+}
+
+function scoreRoute(routeLatLngs,dmgPts){
+ const BUFFER=200;
+ let total=0,destroyed=0,severe=0;
+ dmgPts.forEach(p=>{
+  if(distToPolyline(p[0],p[1],routeLatLngs)<BUFFER){
+   total++;if(p[2]==='destroyed')destroyed++;
+   if(p[2]==='severe'||p[2]==='severely_damaged')severe++;
+  }
+ });
+ return{total,destroyed,severe};
+}
+
+// ---- SVG EVACUATION MAP RENDERING ----
+const SVG_W=900,SVG_H=650;
+const GEO={latMin:47.02,latMax:47.18,lonMin:37.35,lonMax:37.75};
+function geoToSvg(lat,lon){
+ const x=(lon-GEO.lonMin)/(GEO.lonMax-GEO.lonMin)*SVG_W;
+ const y=(1-(lat-GEO.latMin)/(GEO.latMax-GEO.latMin))*SVG_H;
+ return[x,y];
+}
+function svgEl(tag,attrs,parent){
+ const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
+ for(const[k,v]of Object.entries(attrs))el.setAttribute(k,v);
+ if(parent)parent.appendChild(el);return el;
+}
+const FRONT_LINE=[[47.16,37.42],[47.15,37.50],[47.14,37.56],[47.13,37.62],[47.12,37.68],[47.10,37.72],[47.08,37.72],[47.06,37.68],[47.05,37.62],[47.05,37.56],[47.06,37.50],[47.07,37.46],[47.09,37.42],[47.11,37.40],[47.13,37.40],[47.16,37.42]];
+
+// --- Satellite background tile loader ---
+function loadEvacSatellite(){
+ const canvas=document.getElementById('evacSatCanvas');
+ const aspect=SVG_H/SVG_W;
+ const cw=canvas.parentElement.clientWidth||900;
+ const ch=Math.round(cw*aspect);
+ canvas.width=cw;canvas.height=ch;
+ canvas.style.height=ch+'px';
+ const ctx=canvas.getContext('2d');
+ ctx.fillStyle='#0e1014';ctx.fillRect(0,0,cw,ch);
+ // Load Wayback tiles at zoom 13 covering our geo bounds
+ const z=13,n=Math.pow(2,z);
+ const lonToTileX=lon=>Math.floor((lon+180)/360*n);
+ const latToTileY=lat=>Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*n);
+ const x0=lonToTileX(GEO.lonMin),x1=lonToTileX(GEO.lonMax);
+ const y0=latToTileY(GEO.latMax),y1=latToTileY(GEO.latMin);
+ // Convert tile bounds back to geo for pixel mapping
+ const tileToLon=(tx)=>tx/n*360-180;
+ const tileToLat=(ty)=>Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI;
+ const geoToPx=(lat,lon)=>{
+  const px=(lon-GEO.lonMin)/(GEO.lonMax-GEO.lonMin)*cw;
+  const py=(1-(lat-GEO.latMin)/(GEO.latMax-GEO.latMin))*ch;
+  return[px,py];
+ };
+ for(let ty=y0;ty<=y1;ty++){for(let tx=x0;tx<=x1;tx++){
+  const img=new Image();img.crossOrigin='anonymous';
+  img.src=`${WAYBACK_TILE}/${DAMAGE_RELEASE}/${z}/${ty}/${tx}`;
+  const _tx=tx,_ty=ty;
+  img.onload=()=>{
+   const tl=geoToPx(tileToLat(_ty),tileToLon(_tx));
+   const br=geoToPx(tileToLat(_ty+1),tileToLon(_tx+1));
+   const dw=br[0]-tl[0],dh=br[1]-tl[1];
+   ctx.globalAlpha=0.25; // dim satellite so routes stand out
+   ctx.filter='saturate(0.3) brightness(0.7)';
+   ctx.drawImage(img,tl[0],tl[1],dw,dh);
+   ctx.globalAlpha=1;ctx.filter='none';
+  };
+ }}
+}
+
+// --- Tooltip state ---
+let evacZonesData=[],evacRoutesData=[];
+
+function updateEvacMap(){
+ const wk=q('#windowSel').value,wl=WINDOWS[wk],nd=NL_DATES[wk];
+ const dmgPts=(wk==='w4')?unosatData.may:unosatData.march;
+ const lightRatio=nd.remaining/100;
+ if(!lightsData.length&&!dmgPts.length){q('#metaEvac').textContent='Waiting for data…';return;}
+
+ const grid=buildGrid(dmgPts,lightsData,lightRatio);
+ const svg=document.getElementById('evacSvg');
+ svg.innerHTML='';
+
+ // Load satellite background
+ loadEvacSatellite();
+
+ // --- Defs ---
+ const defs=svgEl('defs',{},svg);
+ defs.innerHTML=`
+  <marker id="evacArr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+   <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round"/>
+  </marker>
+  <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="dmgBlur"><feGaussianBlur stdDeviation="1.8"/></filter>
+  <pattern id="ruHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+   <line x1="0" y1="0" x2="0" y2="6" stroke="#d95c5c" stroke-width="1" opacity="0.10"/>
+  </pattern>`;
+
+ // --- UNOSAT damage dots (blurred, subtle background layer) ---
+ const dmgGroup=svgEl('g',{filter:'url(#dmgBlur)',opacity:'0.4'},svg);
+ dmgPts.forEach(p=>{
+  const[x,y]=geoToSvg(p[0],p[1]);
+  if(x<-10||x>SVG_W+10||y<-10||y>SVG_H+10)return;
+  const color=DMG_COLORS[p[2]]||'#999';
+  svgEl('circle',{cx:x,cy:y,r:'2.5',fill:color},dmgGroup);
+ });
+
+ // --- Sea of Azov ---
+ const seaPts=[[47.08,37.35],[47.07,37.45],[47.065,37.50],[47.055,37.55],[47.05,37.60],[47.04,37.65],[47.035,37.70],[47.03,37.75],[47.02,37.75],[47.02,37.35]];
+ const seaD=seaPts.map((p,i)=>{const[x,y]=geoToSvg(p[0],p[1]);return(i?'L':'M')+x+' '+y;}).join('')+'Z';
+ svgEl('path',{d:seaD,fill:'#1e2832',opacity:'0.4'},svg);
+ const[seaLx,seaLy]=geoToSvg(47.035,37.60);
+ svgEl('text',{x:seaLx,y:seaLy,fill:'#3a5060','font-size':'13','font-style':'italic','font-family':'Georgia,serif','text-anchor':'middle'},svg).textContent='Sea of Azov';
+
+ // --- Front line ---
+ const flD=FRONT_LINE.map((p,i)=>{const[x,y]=geoToSvg(p[0],p[1]);return(i?'L':'M')+x+' '+y;}).join('')+'Z';
+ svgEl('path',{d:flD,fill:'url(#ruHatch)',stroke:'none'},svg);
+ svgEl('path',{d:flD,fill:'none',stroke:'#d95c5c','stroke-width':'1.4','stroke-dasharray':'7 4',opacity:'0.6'},svg);
+
+ // --- Corridor regime overlay ---
+ const corr=CORRIDORS[wk];
+
+ // Russian-proposed eastward route (w3: shown crossed out; others: dimmed)
+ const ruRouteD=ROUTE_EAST_RU.map((p,i)=>{const[x,y]=geoToSvg(p[0],p[1]);return(i?'L':'M')+x+' '+y;}).join('');
+ if(wk==='w3'){
+  // Active rejected route — dashed, with X marks
+  svgEl('path',{d:ruRouteD,fill:'none',stroke:'#cf9a4b','stroke-width':'2.5',opacity:'0.7','stroke-dasharray':'6 4','stroke-linecap':'round'},svg);
+  // X marks along the route
+  const xPts=[[47.105,37.68],[47.108,37.76]];
+  xPts.forEach(p=>{
+   const[x,y]=geoToSvg(p[0],p[1]);
+   svgEl('line',{x1:x-5,y1:y-5,x2:x+5,y2:y+5,stroke:'#e24e4e','stroke-width':'2.5','stroke-linecap':'round'},svg);
+   svgEl('line',{x1:x+5,y1:y-5,x2:x-5,y2:y+5,stroke:'#e24e4e','stroke-width':'2.5','stroke-linecap':'round'},svg);
+  });
+  // Bezimenne label
+  const[bx,by]=geoToSvg(BEZIMENNE[0],BEZIMENNE[1]);
+  svgEl('circle',{cx:bx,cy:by,r:'4',fill:'#cf9a4b',stroke:'#fff','stroke-width':'1'},svg);
+  svgEl('text',{x:bx,y:by-10,fill:'#cf9a4b','font-size':'9','font-weight':'600','font-family':'sans-serif','text-anchor':'middle'},svg).textContent='Bezimenne';
+  svgEl('text',{x:bx,y:by+14,fill:'#e24e4e','font-size':'8','font-weight':'700','font-family':'monospace','text-anchor':'middle'},svg).textContent='REJECTED';
+  svgEl('text',{x:bx,y:by+24,fill:'#888','font-size':'7','font-family':'monospace','text-anchor':'middle'},svg).textContent='RU-proposed · GC IV art. 49';
+ } else {
+  // Dimmed for other windows
+  svgEl('path',{d:ruRouteD,fill:'none',stroke:'#cf9a4b','stroke-width':'1.2',opacity:'0.15','stroke-dasharray':'4 4'},svg);
+  const[bx,by]=geoToSvg(BEZIMENNE[0],BEZIMENNE[1]);
+  svgEl('circle',{cx:bx,cy:by,r:'3',fill:'#cf9a4b',opacity:'0.25'},svg);
+  svgEl('text',{x:bx,y:by-8,fill:'#cf9a4b','font-size':'8','font-family':'sans-serif','text-anchor':'middle',opacity:'0.3'},svg).textContent='Bezimenne';
+ }
+
+ // Corridor status badge (top-right of map)
+ const badgeW=240,badgeH=wk==='w4'?38:28;
+ svgEl('rect',{x:SVG_W-badgeW-10,y:10,width:badgeW,height:badgeH,rx:4,
+  fill:'#191b1e',opacity:'0.92',stroke:corr.statusCol,'stroke-width':'1.2'},svg);
+ svgEl('circle',{cx:SVG_W-badgeW+2,cy:10+badgeH/2,r:'4',fill:corr.statusCol},svg);
+ svgEl('text',{x:SVG_W-badgeW+12,y:10+badgeH/2-3,fill:corr.statusCol,
+  'font-size':'10','font-weight':'700','font-family':'sans-serif'},svg).textContent='CORRIDOR: '+corr.status;
+ svgEl('text',{x:SVG_W-badgeW+12,y:10+badgeH/2+9,fill:'#888',
+  'font-size':'7.5','font-family':'monospace'},svg).textContent=corr.label;
+ if(wk==='w4'){
+  svgEl('text',{x:SVG_W-badgeW+12,y:10+badgeH/2+19,fill:'#48b98e',
+   'font-size':'7','font-family':'monospace'},svg).textContent='UN/ICRC · GC IV art. 17 operational';
+ }
+
+ // --- Compute zones & routes ---
+ const allCells=[];
+ for(let r=0;r<GRID_ROWS;r++){for(let c=0;c<GRID_COLS;c++){
+  if(grid[r][c].urgency>0) allCells.push(grid[r][c]);
+ }}
+ allCells.sort((a,b)=>b.urgency-a.urgency);
+ const zones=[];
+ const used=new Set();
+ for(const cell of allCells){
+  if(used.has(cell.row+','+cell.col))continue;
+  if(zones.length>=5)break;
+  let tooClose=false;
+  for(const z of zones){if(haversine(cell.lat,cell.lon,z.lat,z.lon)<500){tooClose=true;break;}}
+  if(tooClose){used.add(cell.row+','+cell.col);continue;}
+  let bldg=0,dmg=0,destr=0,sev=0,litOn=0,litTot=0,pop=0,vuln=0,ch=0,eld=0,dis=0;
+  let distName='';
+  for(const c2 of allCells){
+   if(haversine(cell.lat,cell.lon,c2.lat,c2.lon)<400){
+    used.add(c2.row+','+c2.col);
+    bldg+=c2.buildings;dmg+=c2.damaged;destr+=c2.destroyed;sev+=c2.severe;
+    litOn+=c2.lightsOn;litTot+=c2.lightsTotal;
+    pop+=c2.estPop;vuln+=c2.vulnPop;ch+=c2.children;eld+=c2.elderly;dis+=c2.disabled;
+    if(!distName)distName=c2.district.name;
+   }
+  }
+  const darkPct=litTot>0?Math.round((1-litOn/litTot)*100):0;
+  const dmgPct=bldg>0?Math.round(dmg/bldg*100):0;
+  zones.push({row:cell.row,col:cell.col,lat:cell.lat,lon:cell.lon,
+   bldg,dmg,destr,sev,darkPct,dmgPct,urgency:cell.urgency,
+   pop,vuln,children:ch,elderly:eld,disabled:dis,distName,
+   color:ZONE_COLORS[zones.length]});
+ }
+ evacZonesData=zones;
+
+ let exitR=0,exitC=0,minD=Infinity;
+ for(let r=0;r<GRID_ROWS;r++){for(let c=0;c<GRID_COLS;c++){
+  const d=haversine(grid[r][c].lat,grid[r][c].lon,EXIT_WEST[0],EXIT_WEST[1]);
+  if(d<minD){minD=d;exitR=r;exitC=c;}
+ }}
+
+ const routes=[];
+ zones.forEach((z,i)=>{
+  const result=dijkstra(grid,z.row,z.col,exitR,exitC);
+  if(result.path.length<2)return;
+  const cityLL=result.path.map(p=>[p.lat,p.lon]);
+  const cityScore=scoreRoute(cityLL,dmgPts);
+  const blocked=result.path.filter(p=>!grid[p.r][p.c].passable).length;
+  const cityKm=(result.path.length*0.25).toFixed(1);
+  routes.push({zone:z,result,cityLL,cityScore,blocked,cityKm,index:i});
+ });
+ evacRoutesData=routes;
+
+ // --- Draw routes (solid if corridor open, dashed if failed/self-evac) ---
+ const corrOpen=wk==='w4';
+ const routeDash=corrOpen?'none':'6 4';
+ const routeOpacity=corrOpen?'0.9':'0.55';
+ const routeWidth=corrOpen?'2.4':'2';
+ const drawOrder=[...routes].sort((a,b)=>b.cityScore.total-a.cityScore.total);
+ drawOrder.forEach(r=>{
+  const cityD=r.cityLL.map((p,i)=>{const[x,y]=geoToSvg(p[0],p[1]);return(i?'L':'M')+x+' '+y;}).join('');
+  svgEl('path',{d:cityD,fill:'none',stroke:r.zone.color,'stroke-width':'7',opacity:corrOpen?'0.08':'0.04',filter:'url(#glow)'},svg);
+  svgEl('path',{d:cityD,fill:'none',stroke:'#000','stroke-width':'4',opacity:'0.25','stroke-linecap':'round','stroke-linejoin':'round'},svg);
+  svgEl('path',{d:cityD,fill:'none',stroke:r.zone.color,'stroke-width':routeWidth,opacity:routeOpacity,
+   'stroke-dasharray':routeDash,'stroke-linecap':'round','stroke-linejoin':'round'},svg);
+  // Dashed highway exiting left
+  const hwPts=[EXIT_WEST,...HIGHWAY_WEST.slice(1,4)];
+  const hwD=hwPts.map((p,i)=>{const[x,y]=geoToSvg(p[0],p[1]);return(i?'L':'M')+x+' '+y;}).join('');
+  svgEl('path',{d:hwD,fill:'none',stroke:r.zone.color,'stroke-width':'1.8',opacity:corrOpen?'0.45':'0.25','stroke-dasharray':'8 5','stroke-linecap':'round','marker-end':'url(#evacArr)'},svg);
+ });
+
+ // --- Zone markers (minimal: numbered circle, hover for details) ---
+ zones.forEach((z,i)=>{
+  const[cx,cy]=geoToSvg(z.lat,z.lon);
+  svgEl('circle',{cx,cy,r:'16',fill:z.color,'fill-opacity':'0.10',stroke:z.color,'stroke-width':'1','stroke-dasharray':'3 3'},svg);
+  svgEl('circle',{cx,cy,r:'8',fill:z.color,stroke:'#fff','stroke-width':'1.5','class':'evac-zone-dot','data-zone':i,style:'cursor:pointer'},svg);
+  svgEl('text',{x:cx,y:cy+3.5,fill:'#fff','font-size':'9','font-weight':'700','font-family':'sans-serif','text-anchor':'middle','pointer-events':'none'},svg).textContent=i+1;
+ });
+
+ // --- Exit marker ---
+ const[exX,exY]=geoToSvg(EXIT_WEST[0],EXIT_WEST[1]);
+ svgEl('circle',{cx:exX,cy:exY,r:'6',fill:'#48b98e',stroke:'#fff','stroke-width':'1.5'},svg);
+ svgEl('circle',{cx:exX,cy:exY,r:'11',fill:'none',stroke:'#48b98e','stroke-width':'1','stroke-dasharray':'3 3'},svg);
+ svgEl('text',{x:exX,y:exY-14,fill:'#48b98e','font-size':'9','font-weight':'700','font-family':'sans-serif','text-anchor':'middle'},svg).textContent='EXIT WEST';
+
+ // --- Zaporizhzhia label (left edge) ---
+ const zapY=Math.min(exY, SVG_H-40);
+ svgEl('text',{x:14,y:zapY-8,fill:'#48b98e','font-size':'11','font-weight':'700','font-family':'sans-serif'},svg).textContent='← ZAPORIZHZHIA';
+ svgEl('text',{x:14,y:zapY+5,fill:'#888','font-size':'8','font-family':'monospace'},svg).textContent='227 km via Manhush–Berdyansk–Tokmak–Vasylivka';
+
+ // --- Landmarks ---
+ const[mLx,mLy]=geoToSvg(47.097,37.565);
+ svgEl('text',{x:mLx,y:mLy-20,fill:'#eae8e1','font-size':'13','font-weight':'700','font-family':'sans-serif','text-anchor':'middle'},svg).textContent='Mariupol';
+ svgEl('text',{x:mLx,y:mLy-8,fill:'#d95c5c','font-size':'8','font-family':'monospace','text-anchor':'middle'},svg).textContent='encircled from 2 Mar';
+ [{pos:[47.098,37.610],name:'Azovstal',col:'#d95c5c'},{pos:[47.096,37.549],name:'Drama Theater',col:'#5b9bd5'}].forEach(lm=>{
+  const[lx,ly]=geoToSvg(lm.pos[0],lm.pos[1]);
+  svgEl('circle',{cx:lx,cy:ly,r:'2.5',fill:lm.col,stroke:'#fff','stroke-width':'0.6'},svg);
+  svgEl('text',{x:lx+6,y:ly+3,fill:lm.col,'font-size':'8.5','font-weight':'600','font-family':'sans-serif'},svg).textContent=lm.name;
+ });
+
+ // --- Scale bar (2 km) ---
+ const[s0x,s0y]=geoToSvg(47.03,37.65);
+ const[s1x]=geoToSvg(47.03,37.677);
+ svgEl('line',{x1:s0x,y1:s0y,x2:s1x,y2:s0y,stroke:'#8b929b','stroke-width':'1.2'},svg);
+ svgEl('line',{x1:s0x,y1:s0y-3,x2:s0x,y2:s0y+3,stroke:'#8b929b','stroke-width':'1.2'},svg);
+ svgEl('line',{x1:s1x,y1:s0y-3,x2:s1x,y2:s0y+3,stroke:'#8b929b','stroke-width':'1.2'},svg);
+ svgEl('text',{x:(s0x+s1x)/2,y:s0y-6,fill:'#71767d','font-size':'8','font-family':'monospace','text-anchor':'middle'},svg).textContent='2 km';
+
+ // --- HEADERS ---
+ q('#evacMapHead').textContent='EVACUATION FROM DAMAGE ZONES · '+wl.label.toUpperCase();
+ q('#evacMapDate').textContent=UNOSAT_DMG_PCT[wk]+' damaged · '+nd.remaining+'% lights';
+ q('#evacStatsTitle').textContent='Evacuation Analysis — '+wl.label;
+ q('#metaEvac').textContent=`${zones.length} emergency zones · ${dmgPts.length} UNOSAT points · ${lightsData.length.toLocaleString()} buildings · ${nd.remaining}% lights · ${wl.label}`;
+
+ // --- SIDE PANEL (full recommendations) ---
+ const totalPop=zones.reduce((s,z)=>s+z.pop,0);
+ const totalVuln=zones.reduce((s,z)=>s+z.vuln,0);
+ let html=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+  <div style="flex:1;min-width:70px;background:#1a1d21;padding:7px 8px;border-radius:4px;border-left:3px solid var(--muted)">
+   <div style="font:700 16px monospace;color:var(--text)">${UNOSAT_DMG_PCT[wk]}</div>
+   <div style="font:8px monospace;color:var(--muted)">damaged</div>
+  </div>
+  <div style="flex:1;min-width:70px;background:#1a1d21;padding:7px 8px;border-radius:4px;border-left:3px solid var(--muted)">
+   <div style="font:700 16px monospace;color:var(--text)">${nd.remaining}%</div>
+   <div style="font:8px monospace;color:var(--muted)">lights</div>
+  </div>
+  <div style="flex:1;min-width:70px;background:#1a1d21;padding:7px 8px;border-radius:4px;border-left:3px solid var(--muted)">
+   <div style="font:700 16px monospace;color:var(--text)">${totalPop.toLocaleString()}</div>
+   <div style="font:8px monospace;color:var(--muted)">est. pop</div>
+  </div>
+  <div style="flex:1;min-width:70px;background:#1a1d21;padding:7px 8px;border-radius:4px;border-left:3px solid #e24e4e">
+   <div style="font:700 16px monospace;color:#e24e4e">${totalVuln.toLocaleString()}</div>
+   <div style="font:8px monospace;color:var(--muted)">vulnerable</div>
+  </div>
+ </div>`;
+ // Corridor status
+ html+=`<div style="padding:8px;background:#1a1d21;border-radius:4px;border-left:3px solid ${corr.statusCol};margin-bottom:12px">
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+   <span style="width:8px;height:8px;border-radius:50%;background:${corr.statusCol}"></span>
+   <span style="font:700 12px sans-serif;color:${corr.statusCol}">CORRIDOR: ${corr.status}</span>
+  </div>
+  <div style="font:10px monospace;color:var(--muted);line-height:1.5">${corr.detail}</div>
+  <div style="font:9px monospace;color:${corr.statusCol};margin-top:4px">${corr.ihl}</div>
+ </div>`;
+
+ html+=`<div style="font:600 13px sans-serif;color:var(--text);margin-bottom:6px">Emergency Zones — priority ranked</div>`;
+ html+=`<div style="font:9px monospace;color:var(--muted);margin-bottom:8px">Urgency = vulnerable pop × Vw × (damage + darkness) × (1 + destruction)</div>`;
+ zones.forEach((z,i)=>{
+  const vulnPct=z.pop>0?Math.round(z.vuln/z.pop*100):0;
+  html+=`<div style="padding:6px 8px;background:#1a1d21;border-radius:3px;border-left:3px solid ${z.color};margin-bottom:6px">
+   <div style="display:flex;justify-content:space-between;align-items:center">
+    <span style="font:700 12px sans-serif;color:${z.color}">Zone ${i+1}</span>
+    <span style="font:8px monospace;color:var(--muted)">${z.distName}</span>
+   </div>
+   <div style="display:flex;gap:8px;font:9px monospace;color:var(--muted);margin-top:3px;flex-wrap:wrap">
+    <span>~${z.pop.toLocaleString()} people</span>
+    <span style="color:#e24e4e">${z.vuln.toLocaleString()} vulnerable (${vulnPct}%)</span>
+   </div>
+   <div style="display:flex;gap:8px;font:9px monospace;color:var(--muted);margin-top:1px">
+    <span>${z.children} children</span>
+    <span>${z.elderly} elderly</span>
+    <span>${z.disabled} disabled</span>
+   </div>
+   <div style="display:flex;gap:8px;font:9px monospace;color:var(--muted);margin-top:1px">
+    <span>${z.bldg} bldg</span>
+    <span>${z.dmgPct}% dmg</span>
+    <span>${z.darkPct}% dark</span>
+    <span>${z.destr} destr</span>
+   </div>
+  </div>`;
+ });
+ // --- Analysis ---
+ const corrIsOpen=wk==='w4';
+ if(routes.length){
+  const best=routes.reduce((a,b)=>a.cityScore.total<=b.cityScore.total?a:b);
+  const worst=routes.reduce((a,b)=>a.cityScore.total>=b.cityScore.total?a:b);
+  const priority=zones[0];
+  html+=`<div style="margin-top:10px;padding:8px;background:#1a1d21;border:1px solid ${corr.statusCol};border-radius:4px">
+   <div style="font:700 11px sans-serif;color:${corr.statusCol};margin-bottom:4px">ANALYSIS — ${corr.routeTag}</div>
+   <div style="font:10px monospace;color:var(--muted);line-height:1.6">
+    <b>Priority:</b> Zone 1 (${priority.distName}) — <span style="color:#e24e4e">${priority.vuln.toLocaleString()} vulnerable</span> (${priority.children} children, ${priority.elderly} elderly) in ${priority.dmgPct}% damaged, ${priority.darkPct}% dark area.<br>
+    <b>Safest:</b> Zone ${best.index+1} — ${best.cityScore.total} damaged structures, ${best.cityKm} km. ${best.blocked===0?'Clear path.':best.blocked+' blocked cells.'}<br>
+    <b>Hardest:</b> Zone ${worst.index+1} — ${worst.cityScore.total} damaged, ${worst.zone.dmgPct}% damage, ${worst.zone.darkPct}% dark.<br>
+    <b>Corridor:</b> ${corrIsOpen
+     ?'Organized evacuation (UN/ICRC) operational — routes to Zaporizhzhia viable.'
+     :'No functioning corridor. Routes show where evacuation '+
+      (wk==='w1'?'was agreed but collapsed under shelling.':wk==='w2'?'is happening at civilian risk, without ceasefire or escort.':'should occur but is blocked by consent dispute.')
+    }${wk==='w3'?'<br><b>Rejected:</b> RU-proposed route east → Bezimenne (GC IV art. 49, forced transfer).':''}
+   </div>
+  </div>`;
+ }
+ // (legend removed — corridor context in route section above)
+ q('#evacSummary').innerHTML=html;
+
+ // --- Send feasibility data to parent (index.html) for unified conclusion ---
+ if(window.parent!==window){
+  const priority=zones[0]||{};
+  const best=routes.length?routes.reduce((a,b)=>a.cityScore.total<=b.cityScore.total?a:b):null;
+  window.parent.postMessage({type:'feasibility', data:{
+   window:wk, windowLabel:wl.label,
+   dmgPct:UNOSAT_DMG_PCT[wk], lightsPct:nd.remaining,
+   totalPop, totalVuln,
+   zoneCount:zones.length,
+   priority:{name:priority.distName||'—',pop:priority.pop||0,vuln:priority.vuln||0,
+    children:priority.children||0,elderly:priority.elderly||0,disabled:priority.disabled||0,
+    dmgPct:priority.dmgPct||0,darkPct:priority.darkPct||0},
+   corridor:corr,
+   bestRoute:best?{zone:best.index+1,km:best.cityKm,dmg:best.cityScore.total,blocked:best.blocked}:null,
+   routeCount:routes.length
+  }},'*');
+ }
+}
+
+// --- Hover tooltip for zone markers ---
+(function(){
+ const svgBox=document.getElementById('evacSvg');
+ const tip=document.getElementById('evacTooltip');
+ svgBox.addEventListener('mousemove',function(e){
+  const t=e.target.closest('.evac-zone-dot');
+  if(!t){tip.style.display='none';return;}
+  const zi=+t.getAttribute('data-zone');
+  const z=evacZonesData[zi];
+  const r=evacRoutesData.find(r=>r.index===zi);
+  if(!z)return;
+  const vulnPct=z.pop>0?Math.round(z.vuln/z.pop*100):0;
+  let h=`<div style="font:700 12px sans-serif;color:${z.color};margin-bottom:2px">ZONE ${zi+1}</div>`;
+  h+=`<div style="color:#888;font-size:10px;margin-bottom:5px">${z.distName}</div>`;
+  h+=`<div style="color:#c27adb">~${z.pop.toLocaleString()} people · ${z.vuln.toLocaleString()} vulnerable (${vulnPct}%)</div>`;
+  h+=`<div style="color:#c27adb">${z.children} children · ${z.elderly} elderly · ${z.disabled} disabled</div>`;
+  h+=`<div style="margin-top:4px">${z.bldg} buildings</div>`;
+  h+=`<div style="color:#e5333d">${z.dmg} damaged (${z.dmgPct}%) · ${z.destr} destroyed · ${z.sev} severe</div>`;
+  h+=`<div style="color:${z.darkPct>50?'#e24e4e':'#d39a45'}">${z.darkPct}% without lights</div>`;
+  if(r){
+   const sc=r.cityScore;
+   h+=`<div style="margin-top:6px;border-top:1px solid #444;padding-top:4px">`;
+   h+=`<div>Route: ${r.cityKm} km to exit</div>`;
+   h+=`<div>${sc.total} damaged along path (${sc.destroyed} destroyed, ${sc.severe} severe)</div>`;
+   h+=`<div style="color:${r.blocked?'#e5333d':'#48b98e'}">${r.blocked?r.blocked+' blocked cells':'Clear path'}</div>`;
+   h+=`</div>`;
+  }
+  tip.innerHTML=h;
+  tip.style.display='block';
+  // Position near cursor
+  const rect=svgBox.parentElement.getBoundingClientRect();
+  let tx=e.clientX-rect.left+14, ty=e.clientY-rect.top-10;
+  if(tx+270>rect.width)tx=tx-280;
+  if(ty+150>rect.height)ty=ty-120;
+  tip.style.left=tx+'px';tip.style.top=ty+'px';
+ });
+ svgBox.addEventListener('mouseleave',()=>{tip.style.display='none';});
+})();
+
+function tryInitEvac(){if((unosatData.march.length||unosatData.may.length)&&lightsData.length)updateEvacMap();else setTimeout(tryInitEvac,500);}
+tryInitEvac();
+q('#windowSel').onchange=async()=>{q('#afterSel').value='';await updateLayers();updateUnosat();updateNightlights();updateEvacMap();};q('#afterSel').onchange=()=>updateLayers();q('#coord').onchange=()=>load();renderWindows();updateUnosat();initWayback();
 </script></body></html>
