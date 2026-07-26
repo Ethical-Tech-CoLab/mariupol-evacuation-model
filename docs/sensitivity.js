@@ -12,10 +12,11 @@ function kinetics(i){
 const REGIMES=[{from:0,to:8,viol:1.00,cons:0.50},{from:9,to:55,viol:0.67,cons:0.75},
  {from:56,to:63,viol:0.60,cons:0.25},{from:64,to:76,viol:0.70,cons:0.90}];
 const regimeOf = i => REGIMES.find(r=>i>=r.from && i<=r.to);
-const T_ANCH=[[0,-1],[5,-3],[8,-6],[11,-4],[13,2],[20,5],[31,9],[46,12],[61,15],[76,18]];
+/* ERA5 reanalysis daily mean temperature (°C) · Open-Meteo API · 47.10°N 37.55°E · 2022-03-05 to 2022-05-20 */
+const T_ERA5=[2.1,0.1,-0.7,-0.4,-1.5,-3.1,-3.2,-4.0,-3.9,-1.3,1.8,-2.2,-4.6,-3.4,-1.2,0.5,3.6,4.0,2.9,2.6,3.0,5.1,4.8,2.1,6.3,8.0,8.5,10.9,11.9,10.1,6.0,5.1,7.8,9.7,10.2,10.6,12.1,14.7,9.7,4.3,8.9,10.6,9.0,10.0,13.3,13.0,10.2,8.7,9.3,10.5,13.8,14.8,17.3,17.1,15.4,15.6,14.3,13.5,11.8,11.3,12.4,13.8,12.4,11.7,12.8,15.5,12.3,12.9,15.8,16.4,15.7,16.7,16.6,16.4,13.0,11.2,15.6];
 function interp(A,i,dflt){for(let k=0;k<A.length-1;k++){const[x0,y0]=A[k],[x1,y1]=A[k+1];
   if(i>=x0&&i<=x1)return y0+(y1-y0)*(i-x0)/(x1-x0);}return dflt;}
-const tempOf=i=>interp(T_ANCH,i,18);
+const tempOf=i=>(i>=0&&i<T_ERA5.length)?T_ERA5[i]:T_ERA5[T_ERA5.length-1];
 const DMG_ANCH=[[0,0.02],[9,0.04],[21,0.14],[63,0.32],[76,0.33]];
 const dmgOf=i=>interp(DMG_ANCH,i,0.90);
 const siegeOf = i => i + 3;
